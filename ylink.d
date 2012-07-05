@@ -43,6 +43,6 @@ void main(string[] args)
 
     foreach(object; objectFiles)
     {
-        writeln(object);
+        object.dump();
     }
 }
