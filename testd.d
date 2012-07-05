@@ -1,6 +1,7 @@
 
 __gshared int global_shared;
 int global_tls;
+extern int global_extern;
 
 void main()
 {

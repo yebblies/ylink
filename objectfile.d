@@ -1,6 +1,7 @@
 
 import datafile;
 import omfobjectfile;
+import segmenttable;
 import symboltable;
 
 abstract class ObjectFile
@@ -17,5 +18,5 @@ abstract class ObjectFile
         }
     }
     abstract void dump();
-    abstract void loadSymbols(SymbolTable tab);
+    abstract void loadSymbols(SymbolTable symtab, SegmentTable segtab);
 }

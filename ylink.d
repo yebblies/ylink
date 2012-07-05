@@ -6,6 +6,7 @@ import std.stdio;
 import objectfile;
 import omfobjectfile;
 import relocation;
+import segmenttable;
 import symboltable;
 
 void main(string[] args)
@@ -43,7 +44,7 @@ void main(string[] args)
 
     foreach(object; objectFiles)
     {
-        object.dump();
-        object.loadSymbols(null);
+        //object.dump();
+        object.loadSymbols(null, null);
     }
 }
