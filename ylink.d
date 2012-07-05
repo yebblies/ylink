@@ -44,5 +44,6 @@ void main(string[] args)
     foreach(object; objectFiles)
     {
         object.dump();
+        object.loadSymbols(null);
     }
 }

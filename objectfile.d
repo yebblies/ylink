@@ -1,6 +1,7 @@
 
 import datafile;
 import omfobjectfile;
+import symboltable;
 
 abstract class ObjectFile
 {
@@ -16,4 +17,5 @@ abstract class ObjectFile
         }
     }
     abstract void dump();
+    abstract void loadSymbols(SymbolTable tab);
 }
