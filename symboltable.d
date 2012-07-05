@@ -7,7 +7,7 @@ import symbol;
 class SymbolTable
 {
     Symbol[immutable(ubyte)[]] symbols;
-    Symbol[immutable(ubyte)[]] undefined;
+    Symbol[] undefined;
 
     Symbol searchName(immutable(ubyte)[] name)
     {
@@ -18,11 +18,31 @@ class SymbolTable
     {
         if (auto s = searchName(sym.name))
         {
-            enforce(!s.mod, "Multiple definitions of symbol " ~ cast(string)sym.name);
-            undefined.remove(sym.name);
-            s.mod = sym.mod;
-            s.seg = sym.seg;
-            s.offset = sym.offset;
+            if (s.mod)
+            {
+                if (sym.comdat == Comdat.Any)
+                {
+                    return;
+                }
+                else
+                {
+                    enforce(false, "Multiple definitions of symbol " ~ cast(string)sym.name);
+                }
+            }
+            else
+            {
+                foreach(i; 0..undefined.length)
+                {
+                    if (undefined[i] is s)
+                    {
+                        undefined = undefined[0..i] ~ undefined[i+1..$];
+                        break;
+                    }
+                }
+                s.mod = sym.mod;
+                s.seg = sym.seg;
+                s.offset = sym.offset;
+            }
         }
         else
             symbols[sym.name] = sym;
@@ -35,7 +55,7 @@ class SymbolTable
         else
         {
             symbols[sym.name] = sym;
-            undefined[sym.name] = sym;
+            undefined ~= sym;
             sym.references++;
         }
     }

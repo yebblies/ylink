@@ -3,6 +3,7 @@ import std.conv;
 import std.exception;
 import std.stdio;
 
+import datafile;
 import segment;
 
 enum OmfRecordType
@@ -24,7 +25,8 @@ enum OmfRecordType
     FIXUPP32, // Fixup Record
     LEDATA16, // Logical Enumerated Data Record
     LEDATA32, // Logical Enumerated Data Record
-    LIDATA, // Logical Iterated Data Record
+    LIDATA16, // Logical Iterated Data Record
+    LIDATA32, // Logical Iterated Data Record
     COMDEF, // Communal Names Definition Record
     BAKPAT, // Backpatch Record
     LEXTDEF, // Local External Names Definition Record
@@ -76,8 +78,8 @@ struct OmfRecord
         case 0x9D: return FIXUPP32;
         case 0xA0: return LEDATA16;
         case 0xA1: return LEDATA32;
-        case 0xA2:
-        case 0xA3: return LIDATA;
+        case 0xA2: return LIDATA16;
+        case 0xA3: return LIDATA32;
         case 0xB0: return COMDEF;
         case 0xB2:
         case 0xB3: return BAKPAT;
@@ -131,6 +133,23 @@ immutable(ubyte)[] getString(ref immutable(ubyte)[] d)
     auto r = d[1..n+1];
     d = d[n+1..$];
     return r;
+}
+
+uint getComLength(ref immutable(ubyte)[] d)
+{
+    auto l = getByte(d);
+    if (l <= 128)
+        return l;
+    else if (l == 0x81)
+        return getWordLE(d);
+    else if (l == 0x84)
+    {
+        auto r = getWordLE(d);
+        return r | (getByte(d) << 16);
+    }
+    else if (l == 0x88)
+        return getDwordLE(d);
+    assert(0);
 }
 
 struct OmfGroup

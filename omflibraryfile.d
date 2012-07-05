@@ -82,11 +82,11 @@ public:
         do
         {
             progress = false;
-            foreach(name, sym; symtab.undefined)
+            foreach(sym; symtab.undefined)
             {
-                if (name in symbols)
+                if (sym.name in symbols)
                 {
-                    auto page = symbols[name];
+                    auto page = symbols[sym.name];
                     auto obj = new OmfObjectFile(new DataFile(f, page * pagesize));
                     obj.loadSymbols(symtab, segtab, queue, objects);
                     progress = true;

@@ -57,6 +57,7 @@ public:
                 sourcefiles ~= r.data[1..$];
                 //writeln(cast(string)r.data[1..$]);
                 break;
+            case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
                 auto data = r.data;
                 enforce(data.length != 0, "Empty LNAMES record");
@@ -87,6 +88,9 @@ public:
                             r.data[4] == 'V',
                             "Only codeview debugging information is supported");
                     break;
+                case 0xA2:
+                    modend = true;
+                    break;
                 default:
                     enforce(false, "COMENT type " ~ to!string(cclass, 16) ~ " not supported");
                 }
@@ -115,7 +119,8 @@ public:
                     enforce(false, "Invalid alignment value");
                     break;
                 }
-                enforce(C == 2, "Only public segments are supported");
+                enforce(C == 2 || C == 5, "Only public segments are supported: " ~ to!string(C));
+                if (C == 5) segalign = SegmentAlign.align_1;
                 enforce(!B, "Big segments are not supported");
                 enforce(P, "Use16 segments are not supported");
                 data = data[1..$];
@@ -136,11 +141,13 @@ public:
                 SegmentClass segclass;
                 switch(cast(string)names[cname-1])
                 {
-                case "CODE":  segclass = SegmentClass.Code;  break;
-                case "DATA":  segclass = SegmentClass.Data;  break;
-                case "CONST": segclass = SegmentClass.Const; break;
-                case "BSS":   segclass = SegmentClass.BSS;   break;
-                case "tls":   segclass = SegmentClass.TLS;   break;
+                case "CODE":   segclass = SegmentClass.Code;   break;
+                case "DATA":   segclass = SegmentClass.Data;   break;
+                case "CONST":  segclass = SegmentClass.Const;  break;
+                case "BSS":    segclass = SegmentClass.BSS;    break;
+                case "tls":    segclass = SegmentClass.TLS;    break;
+                case "ENDBSS": segclass = SegmentClass.ENDBSS; break;
+                case "STACK":  segclass = SegmentClass.STACK;  break;
                 default:
                     enforce(false, "Unknown segment class: " ~ cast(string)names[cname-1]);
                     break;
@@ -189,8 +196,8 @@ public:
                     auto name = getBytes(data, length);
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                     auto type = getIndex(data);
-                    symtab.define(new Symbol(this, segments[seg-1], name, offset));
-                    //writeln("PUBDEF name:", cast(string)name, " ", cast(string)segments[seg-1].name, "+", offset);
+                    symtab.define(new Symbol(this, seg ? segments[seg-1] : null, name, offset));
+                    writeln("PUBDEF name:", cast(string)name, " ", seg ? cast(string)segments[seg-1].name : "__abs__", "+", offset);
                 }
                 enforce(data.length == 0, "Corrupt PUBDEF record");
                 break;
@@ -199,9 +206,17 @@ public:
                 auto off16 = (r.type == OmfRecordType.PUBDEF16);
                 auto data = r.data;
                 auto flags = getByte(data);
-                enforce(flags == 0, "No COMDAT flags are supported");
+                enforce(flags < 8, "COMDAT flag not supported: " ~ to!string(flags));
                 auto attributes = getByte(data);
-                enforce(attributes == 0, "COMDAT attributes must be zero");
+                Comdat comdat;
+                switch(attributes & 0xF0)
+                {
+                case 0x00: comdat = Comdat.Unique; break;
+                case 0x10: comdat = Comdat.Any;    break;
+                default:
+                    enforce(false, "COMDAT attribute not supported");
+                    break;
+                }
                 auto alignment = getByte(data);
                 auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                 auto type = getIndex(data);
@@ -234,8 +249,10 @@ public:
                 auto length = data.length;
                 auto xseg = new Segment(seg.name ~ '$' ~ names[name-1], seg.segclass, segalign, length);
                 segtab.add(xseg);
-                symtab.define(new Symbol(this, xseg, names[name-1], offset));
+                //writeln(flags, ' ', attributes, ' ', comdat);
                 //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name);
+                if (!(flags & 1))
+                    symtab.define(new Symbol(this, xseg, names[name-1], offset, comdat));
                 break;
             case OmfRecordType.EXTDEF:
                 auto data = r.data;
@@ -261,16 +278,30 @@ public:
                 }
                 enforce(data.length == 0, "Corrupt CEXTDEF record");
                 break;
-            case OmfRecordType.LLNAMES:
+            case OmfRecordType.COMDEF:
+                auto data = r.data;
+                while (data.length)
+                {
+                    auto name = getString(data);
+                    auto type = getIndex(data);
+                    auto dt = getByte(data);
+                    enforce(dt == 0x61 || dt == 0x62);
+                    auto length = getComLength(data);
+                    if (dt == 0x61)
+                        length *= getComLength(data);
+                }
+                enforce(data.length == 0, "Corrupt COMDEF record");
+                break;
             case OmfRecordType.ALIAS:
             case OmfRecordType.LPUBDEF:
-            case OmfRecordType.COMDEF:
             case OmfRecordType.LCOMDEF:
             case OmfRecordType.LEXTDEF:
                 enforce(false, "Record type " ~ to!string(r.type) ~ " not implemented");
                 break;
             case OmfRecordType.LEDATA16:
             case OmfRecordType.LEDATA32:
+            case OmfRecordType.LIDATA16:
+            case OmfRecordType.LIDATA32:
             case OmfRecordType.FIXUPP16:
             case OmfRecordType.FIXUPP32:
                 // Data definitions are skipped in the first pass
