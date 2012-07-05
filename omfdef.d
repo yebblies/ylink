@@ -39,6 +39,8 @@ enum OmfRecordType
     LLNAMES, // Local Logical Names Definition Record
     VERNUM, // OMF Version Number Record
     VENDEXT, // Vendor-specific OMF Extension Record
+    LIBHEADR,
+    LIBEND,
 };
 
 struct OmfRecord
@@ -94,8 +96,8 @@ struct OmfRecord
         case 0xCA: return LLNAMES;
         case 0xCC: return VERNUM;
         case 0xCE: return VENDEXT;
-        //case 0xF0: return LHEADR;
-        //case 0xF1: return LIBEND;
+        case 0xF0: return LIBHEADR;
+        case 0xF1: return LIBEND;
         default:
             enforce(false, "Invalid omf record type: " ~ to!string(b, 16));
             assert(0);
@@ -120,6 +122,14 @@ ushort getIndex(ref immutable(ubyte)[] d)
         r = d[0] & 0x7F;
         d = d[1..$];
     }
+    return r;
+}
+
+immutable(ubyte)[] getString(ref immutable(ubyte)[] d)
+{
+    ubyte n = d[0];
+    auto r = d[1..n+1];
+    d = d[n+1..$];
     return r;
 }
 

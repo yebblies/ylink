@@ -45,7 +45,8 @@ public:
         objects.append(this);
         f.seek(0);
         enforce(f.peekByte() == 0x80, "First record must be THEADR");
-        while (!f.empty)
+        auto modend = false;
+        while (!f.empty() && !modend)
         {
             auto r = loadRecord();
             switch(r.type)
@@ -54,6 +55,7 @@ public:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
                 sourcefiles ~= r.data[1..$];
+                //writeln(cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LNAMES:
                 auto data = r.data;
@@ -150,7 +152,7 @@ public:
                 auto seg = new Segment(names[name-1], segclass, segalign, length);
                 segments ~= seg;
                 segtab.add(seg);
-                writeln("SEGDEF (", segments.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length);
+                //writeln("SEGDEF (", segments.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length);
                 break;
             case OmfRecordType.GRPDEF:
                 OmfGroup group;
@@ -166,7 +168,7 @@ public:
                     group.segs ~= index;
                 }
                 groups ~= group;
-                writeln("GRPDEF name:", cast(string)names[group.name-1], " components:", group.segs);
+                //writeln("GRPDEF name:", cast(string)names[group.name-1], " components:", group.segs);
                 enforce(data.length == 0, "Corrupt GRPDEF record");
                 break;
             case OmfRecordType.PUBDEF16:
@@ -188,7 +190,7 @@ public:
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                     auto type = getIndex(data);
                     symtab.define(new Symbol(this, segments[seg-1], name, offset));
-                    writeln("PUBDEF name:", cast(string)name, " ", cast(string)segments[seg-1].name, "+", offset);
+                    //writeln("PUBDEF name:", cast(string)name, " ", cast(string)segments[seg-1].name, "+", offset);
                 }
                 enforce(data.length == 0, "Corrupt PUBDEF record");
                 break;
@@ -233,7 +235,7 @@ public:
                 auto xseg = new Segment(seg.name ~ '$' ~ names[name-1], seg.segclass, segalign, length);
                 segtab.add(xseg);
                 symtab.define(new Symbol(this, xseg, names[name-1], offset));
-                writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name);
+                //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name);
                 break;
             case OmfRecordType.EXTDEF:
                 auto data = r.data;
@@ -243,7 +245,7 @@ public:
                     auto name = getBytes(data, length);
                     auto type = getIndex(data);
                     symtab.reference(new Symbol(null, null, name, 0));
-                    writeln("EXTDEF name:", cast(string)name);
+                    //writeln("EXTDEF name:", cast(string)name);
                 }
                 enforce(data.length == 0, "Corrupt EXTDEF record");
                 break;
@@ -255,7 +257,7 @@ public:
                     enforce(name <= names.length, "Invalid symbol name index");
                     auto type = getIndex(data);
                     symtab.reference(new Symbol(null, null, names[name-1], 0));
-                    writeln("CEXTDEF name:", cast(string)names[name-1]);
+                    //writeln("CEXTDEF name:", cast(string)names[name-1]);
                 }
                 enforce(data.length == 0, "Corrupt CEXTDEF record");
                 break;
@@ -275,7 +277,7 @@ public:
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
-                enforce(f.empty(), "MODEND is not at the end of object file");
+                //enforce(f.empty(), "MODEND is not at the end of object file");
                 auto data = r.data;
                 auto type = getByte(data);
                 auto isMain = (type & 0x80) != 0;
@@ -284,6 +286,7 @@ public:
                 enforce(!hasStart || relStart, "Relocatable start address flag must be set");
                 enforce(!hasStart, "FIXME start address");
                 enforce(data.length == 0, "Corrupt MODEND record");
+                modend = true;
                 break;
             default:
                 enforce(false, "Unsupported record type: " ~ to!string(r.type));

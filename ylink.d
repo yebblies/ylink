@@ -1,10 +1,12 @@
 
 import std.exception;
+import std.file;
 import std.path;
 import std.stdio;
 
 import objectfile;
 import omfobjectfile;
+import paths;
 import relocation;
 import segmenttable;
 import symboltable;
@@ -14,6 +16,9 @@ void main(string[] args)
 {
     bool dump;
     string[] objectFilenames;
+    Paths paths = new Paths();
+    paths.add(".");
+    paths.addLINK();
 
     foreach(s; args[1..$])
     {
@@ -39,7 +44,7 @@ void main(string[] args)
 
     auto queue = new WorkQueue!string();
     foreach(filename; objectFilenames)
-        queue.append(filename);
+        queue.append(defaultExtension(filename, "obj"));
 
     auto segtab = new SegmentTable();
     auto symtab = new SymbolTable();
@@ -47,8 +52,9 @@ void main(string[] args)
     while (!queue.empty())
     {
         auto filename = queue.pop();
+        enforce(paths.search(filename), "File not found: " ~ filename);
         auto object = ObjectFile.detectFormat(filename);
-        enforce(object, "Invalid or missing object file: " ~ filename);
+        enforce(object, "Unknown object file format: " ~ filename);
         object.loadSymbols(symtab, segtab, queue, objects);
     }
     segtab.dump();

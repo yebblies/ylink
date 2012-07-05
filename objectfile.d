@@ -1,7 +1,6 @@
 
-import std.file;
-
 import datafile;
+import omflibraryfile;
 import omfobjectfile;
 import segmenttable;
 import symboltable;
@@ -18,16 +17,13 @@ abstract class ObjectFile
 
     static ObjectFile detectFormat(string filename)
     {
-        if (!exists(filename))
-            return null;
         auto f = new DataFile(filename);
         switch(f.peekByte())
         {
         case 0x80:
             return new OmfObjectFile(f);
         case 0xF0:
-            //return new OmfLibraryFile(f);
-            return null;
+            return new OmfLibraryFile(f);
         default:
             return null;
         }

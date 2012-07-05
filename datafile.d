@@ -14,6 +14,11 @@ public:
         this.filename = filename;
         this.data = cast(immutable(ubyte)[])read(filename);
     }
+    this(DataFile other, size_t start)
+    {
+        this.filename = other.filename;
+        this.data = other.data[start..$];
+    }
     ubyte peekByte()
     {
         return data[pos];
@@ -41,6 +46,10 @@ public:
     void seek(size_t pos)
     {
         this.pos = pos;
+    }
+    size_t tell()
+    {
+        return pos;
     }
     immutable(ubyte)[] readBytes(size_t n)
     {
