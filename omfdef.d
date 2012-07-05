@@ -123,37 +123,8 @@ ushort getIndex(ref immutable(ubyte)[] d)
     return r;
 }
 
-struct OmfSegment
-{
-    SegmentAlignment alignment;
-    uint length;
-    ushort name;
-    ushort cname;
-}
-
 struct OmfGroup
 {
     ushort name;
     ushort[] segs;
-}
-
-struct OmfPublicSymbol
-{
-    ushort group;
-    ushort seg;
-    immutable(ubyte)[] name;
-    uint offset;
-    ushort type;
-}
-
-struct OmfExternalSymbol
-{
-    immutable(ubyte)[] name;
-    ushort type;
-}
-
-struct OmfExternalComdatSymbol
-{
-    ushort name;
-    ushort type;
 }

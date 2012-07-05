@@ -8,6 +8,7 @@ import omfobjectfile;
 import relocation;
 import segmenttable;
 import symboltable;
+import workqueue;
 
 void main(string[] args)
 {
@@ -25,6 +26,7 @@ void main(string[] args)
             switch(extension(s))
             {
             case ".obj":
+            case ".lib":
                 objectFilenames ~= s;
                 break;
             default:
@@ -35,16 +37,20 @@ void main(string[] args)
         }
     }
 
-    ObjectFile[] objectFiles;
-
+    auto queue = new WorkQueue!string();
     foreach(filename; objectFilenames)
-    {
-        objectFiles ~= ObjectFile.detectFormat(filename);
-    }
+        queue.append(filename);
 
-    foreach(object; objectFiles)
+    auto segtab = new SegmentTable();
+    auto symtab = new SymbolTable();
+    auto objects = new WorkQueue!ObjectFile();
+    while (!queue.empty())
     {
-        //object.dump();
-        object.loadSymbols(null, null);
+        auto filename = queue.pop();
+        auto object = ObjectFile.detectFormat(filename);
+        enforce(object, "Invalid or missing object file: " ~ filename);
+        object.loadSymbols(symtab, segtab, queue, objects);
     }
+    segtab.dump();
+    symtab.dump();
 }

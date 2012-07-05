@@ -1,6 +1,7 @@
 
 import std.exception;
 import std.conv;
+import std.path;
 import std.stdio;
 
 import datafile;
@@ -8,7 +9,9 @@ import omfdef;
 import objectfile;
 import segment;
 import segmenttable;
+import symbol;
 import symboltable;
+import workqueue;
 
 public:
 
@@ -19,6 +22,7 @@ private:
 public:
     this(DataFile f)
     {
+        super(f.filename);
         this.f = f;
     }
     override void dump()
@@ -31,17 +35,14 @@ public:
             r.dump();
         }
     }
-    override void loadSymbols(SymbolTable symtab, SegmentTable segtab)
+    override void loadSymbols(SymbolTable symtab, SegmentTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
-        immutable(ubyte)[][] defaultLibrary;
         immutable(ubyte)[][] sourcefiles;
         immutable(ubyte)[][] names;
-        OmfSegment[] segments;
+        Segment[] segments;
         OmfGroup[] groups;
-        OmfPublicSymbol[] publicSymbols;
-        OmfExternalSymbol[] externalSymbols;
-        OmfExternalComdatSymbol[] externalComdatSymbols;
 
+        objects.append(this);
         f.seek(0);
         enforce(f.peekByte() == 0x80, "First record must be THEADR");
         while (!f.empty)
@@ -75,7 +76,7 @@ public:
                     checkMemoryModel(r.data[2..$]);
                     break;
                 case 0x9F:
-                    defaultLibrary ~= r.data[2..$];
+                    queue.append(defaultExtension(cast(string)r.data[2..$], "lib"));
                     break;
                 case 0xA1:
                     enforce(r.data.length == 5 &&
@@ -90,7 +91,6 @@ public:
                 break;
             case OmfRecordType.SEGDEF16:
             case OmfRecordType.SEGDEF32:
-                OmfSegment seg;
                 auto data = r.data;
                 enforce(data.length >= 5 || data.length <= 14, "Corrupt SEGDEF record");
                 auto A = data[0] >> 5;
@@ -98,16 +98,17 @@ public:
                 auto B = (data[0] & 2) != 0;
                 auto P = (data[0] & 1) != 0;
 
+                SegmentAlign segalign;
                 switch(A)
                 {
                 case 0: //alignment = SegmentAlignment.absolute;   break;
                     enforce(false, "Absolute segments are not supported");
                     break;
-                case 1: seg.alignment = SegmentAlignment.align_1;    break;
-                case 2: seg.alignment = SegmentAlignment.align_2;    break;
-                case 3: seg.alignment = SegmentAlignment.align_16;   break;
-                case 4: seg.alignment = SegmentAlignment.align_page; break;
-                case 5: seg.alignment = SegmentAlignment.align_4;    break;
+                case 1: segalign = SegmentAlign.align_1;    break;
+                case 2: segalign = SegmentAlign.align_2;    break;
+                case 3: segalign = SegmentAlign.align_16;   break;
+                case 4: segalign = SegmentAlign.align_page; break;
+                case 5: segalign = SegmentAlign.align_4;    break;
                 default:
                     enforce(false, "Invalid alignment value");
                     break;
@@ -116,23 +117,40 @@ public:
                 enforce(!B, "Big segments are not supported");
                 enforce(P, "Use16 segments are not supported");
                 data = data[1..$];
+                uint length;
                 if (r.type == OmfRecordType.SEGDEF16)
                 {
                     enforce(data.length >= 2, "Corrupt SEGDEF record");
-                    seg.length = getWordLE(data);
+                    length = getWordLE(data);
                 } else {
                     enforce(data.length >= 2, "Corrupt SEGDEF record");
-                    seg.length = getDwordLE(data);
+                    length = getDwordLE(data);
                 }
-                seg.name = getIndex(data);
-                enforce(seg.name <= names.length, "Invalid segment name index");
-                seg.cname = getIndex(data);
-                enforce(seg.cname <= names.length, "Invalid class name index");
+                auto name = getIndex(data);
+                enforce(name <= names.length, "Invalid segment name index");
+                auto cname = getIndex(data);
+                enforce(cname <= names.length, "Invalid class name index");
+
+                SegmentClass segclass;
+                switch(cast(string)names[cname-1])
+                {
+                case "CODE":  segclass = SegmentClass.Code;  break;
+                case "DATA":  segclass = SegmentClass.Data;  break;
+                case "CONST": segclass = SegmentClass.Const; break;
+                case "BSS":   segclass = SegmentClass.BSS;   break;
+                case "tls":   segclass = SegmentClass.TLS;   break;
+                default:
+                    enforce(false, "Unknown segment class: " ~ cast(string)names[cname-1]);
+                    break;
+                }
+
                 auto overlayName = getIndex(data); // Discard
                 enforce(overlayName <= names.length, "Invalid overlay name index");
                 enforce(data.length == 0, "Corrupt SEGDEF record");
+                auto seg = new Segment(names[name-1], segclass, segalign, length);
                 segments ~= seg;
-                writeln("SEGDEF (", segments.length, ") name:", cast(string)names[seg.name-1], " class:", cast(string)names[seg.cname-1], " length:", seg.length);
+                segtab.add(seg);
+                writeln("SEGDEF (", segments.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length);
                 break;
             case OmfRecordType.GRPDEF:
                 OmfGroup group;
@@ -160,31 +178,72 @@ public:
                 auto baseSeg = getIndex(data);
                 enforce(baseSeg <= segments.length, "Invalid base segment index");
                 if (baseSeg == 0)
-                    getWordLE(data);
+                    auto baseFrame = getWordLE(data);
                 while (data.length)
                 {
-                    OmfPublicSymbol sym;
-                    sym.group = baseGroup;
-                    sym.seg = baseSeg;
+                    auto group = baseGroup;
+                    auto seg = baseSeg;
                     auto length = getByte(data);
-                    sym.name = getBytes(data, length);
-                    sym.offset = off16 ? getWordLE(data) : getDwordLE(data);
-                    sym.type = getIndex(data);
-                    publicSymbols ~= sym;
-                    writeln("PUBDEF name:", cast(string)sym.name, " ", cast(string)names[segments[sym.seg-1].name-1], "+", sym.offset);
+                    auto name = getBytes(data, length);
+                    auto offset = off16 ? getWordLE(data) : getDwordLE(data);
+                    auto type = getIndex(data);
+                    symtab.define(new Symbol(this, segments[seg-1], name, offset));
+                    writeln("PUBDEF name:", cast(string)name, " ", cast(string)segments[seg-1].name, "+", offset);
                 }
                 enforce(data.length == 0, "Corrupt PUBDEF record");
+                break;
+            case OmfRecordType.COMDAT16:
+            case OmfRecordType.COMDAT32:
+                auto off16 = (r.type == OmfRecordType.PUBDEF16);
+                auto data = r.data;
+                auto flags = getByte(data);
+                enforce(flags == 0, "No COMDAT flags are supported");
+                auto attributes = getByte(data);
+                enforce(attributes == 0, "COMDAT attributes must be zero");
+                auto alignment = getByte(data);
+                auto offset = off16 ? getWordLE(data) : getDwordLE(data);
+                auto type = getIndex(data);
+                ushort baseGroup;
+                ushort baseSeg;
+                if ((attributes & 0x0F) == 0x00)
+                {
+                    baseGroup = getIndex(data);
+                    enforce(baseGroup <= groups.length, "Invalid base group index");
+                    baseSeg = getIndex(data);
+                    enforce(baseSeg <= segments.length, "Invalid base segment index");
+                    if (baseSeg == 0)
+                        auto baseFrame = getWordLE(data);
+                }
+                auto name = getIndex(data);
+                auto seg = segments[baseSeg-1];
+                SegmentAlign segalign;
+                switch(alignment)
+                {
+                case 0: segalign = seg.segalign;            break;
+                case 1: segalign = SegmentAlign.align_1;    break;
+                case 2: segalign = SegmentAlign.align_2;    break;
+                case 3: segalign = SegmentAlign.align_16;   break;
+                case 4: segalign = SegmentAlign.align_page; break;
+                case 5: segalign = SegmentAlign.align_4;    break;
+                default:
+                    enforce(false, "Invalid alignment value");
+                    break;
+                }
+                auto length = data.length;
+                auto xseg = new Segment(seg.name ~ '$' ~ names[name-1], seg.segclass, segalign, length);
+                segtab.add(xseg);
+                symtab.define(new Symbol(this, xseg, names[name-1], offset));
+                writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name);
                 break;
             case OmfRecordType.EXTDEF:
                 auto data = r.data;
                 while (data.length)
                 {
-                    OmfExternalSymbol sym;
                     auto length = getByte(data);
-                    sym.name = getBytes(data, length);
-                    sym.type = getIndex(data);
-                    externalSymbols ~= sym;
-                    writeln("EXTDEF name:", cast(string)sym.name);
+                    auto name = getBytes(data, length);
+                    auto type = getIndex(data);
+                    symtab.reference(new Symbol(null, null, name, 0));
+                    writeln("EXTDEF name:", cast(string)name);
                 }
                 enforce(data.length == 0, "Corrupt EXTDEF record");
                 break;
@@ -192,12 +251,11 @@ public:
                 auto data = r.data;
                 while (data.length)
                 {
-                    OmfExternalComdatSymbol sym;
-                    sym.name = getIndex(data);
-                    enforce(sym.name <= names.length, "Invalid symbol name index");
-                    sym.type = getIndex(data);
-                    externalComdatSymbols ~= sym;
-                    writeln("CEXTDEF name:", cast(string)names[sym.name-1]);
+                    auto name = getIndex(data);
+                    enforce(name <= names.length, "Invalid symbol name index");
+                    auto type = getIndex(data);
+                    symtab.reference(new Symbol(null, null, names[name-1], 0));
+                    writeln("CEXTDEF name:", cast(string)names[name-1]);
                 }
                 enforce(data.length == 0, "Corrupt CEXTDEF record");
                 break;
@@ -209,8 +267,6 @@ public:
             case OmfRecordType.LEXTDEF:
                 enforce(false, "Record type " ~ to!string(r.type) ~ " not implemented");
                 break;
-            case OmfRecordType.COMDAT16:
-            case OmfRecordType.COMDAT32:
             case OmfRecordType.LEDATA16:
             case OmfRecordType.LEDATA32:
             case OmfRecordType.FIXUPP16:
