@@ -40,11 +40,11 @@ public:
     override void loadSymbols(SymbolTable symtab, SegmentTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
         //writeln("OMF Object file: ", f.filename);
-        immutable(ubyte)[][] sourcefiles;
+        immutable(ubyte)[] sourcefile;
         immutable(ubyte)[][] names;
         Segment[] segments;
         OmfGroup[] groups;
-        Symbol[] symbols;
+        immutable(ubyte)[][] externs;
 
         objects.append(this);
         f.seek(0);
@@ -58,7 +58,7 @@ public:
             case OmfRecordType.THEADR:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
-                sourcefiles ~= r.data[1..$];
+                sourcefile = r.data[1..$];
                 writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
@@ -109,7 +109,7 @@ public:
                         }
                         enforce(data.length == 0, "Corrupt IMPDEF record");
                         //writeln("IMPDEF int:", cast(string)intname, " mod:", cast(string)modname, " ent:", isOrdinal ? to!string(entryOrd) : cast(string)expname);
-                        symtab.define(new Symbol(new DllModule(cast(string)modname), entryOrd, intname, expname));
+                        symtab.add(new ImportSymbol(modname, entryOrd, intname, expname));
                         break;
                     default:
                         enforce(false, "COMENT A0 subtype " ~ to!string(subtype, 16) ~ " not supported");
@@ -231,7 +231,7 @@ public:
                     auto name = getBytes(data, length);
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                     auto type = getIndex(data);
-                    symtab.define(new Symbol(this, seg ? segments[seg-1] : null, name, offset));
+                    symtab.add(new PublicSymbol(seg ? segments[seg-1] : null, name, offset));
                     //writeln("PUBDEF name:", cast(string)name, " ", seg ? cast(string)segments[seg-1].name : "__abs__", "+", offset);
                 }
                 enforce(data.length == 0, "Corrupt PUBDEF record");
@@ -284,11 +284,14 @@ public:
                 }
                 auto length = data.length;
                 auto xseg = new Segment(seg.name ~ '$' ~ names[name-1], seg.segclass, segalign, length);
-                segtab.add(xseg);
+                auto cseg = segtab.add(xseg);
+                if (!(flags & 1))
+                {
+                    auto sym = new ComdatSymbol(xseg, cseg, names[name-1], offset, comdat, isLocal);
+                    symtab.add(sym);
+                }
                 //writeln(flags, ' ', attributes, ' ', comdat);
                 //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name, isLocal ? " local" : "");
-                if (!(flags & 1))
-                    symtab.define(new Symbol(this, xseg, names[name-1], offset, comdat, isLocal));
                 break;
             case OmfRecordType.EXTDEF:
                 auto data = r.data;
@@ -299,13 +302,17 @@ public:
                     auto type = getIndex(data);
                     if (name.startsWith("__imp_"))
                     {
-                        symtab.reference(new Symbol(null, 0, name[6..$], null));
+                        symtab.add(new ImportSymbol(null, 0, name[6..$], null));
+                        symtab.add(new DirectImportSymbol(null, 0, name, null));
                         //writeln("EXTDEF name:", cast(string)name[6..$]);
                     }
-                    auto sym = new Symbol(null, null, name, 0);
-                    symtab.reference(sym);
-                    symbols ~= sym;
-                    //writeln("EXTDEF name:", cast(string)name);
+                    else
+                    {
+                        auto sym = new ExternSymbol(name);
+                        symtab.add(sym);
+                        externs ~= name;
+                        //writeln("EXTDEF name:", cast(string)name);
+                    }
                 }
                 enforce(data.length == 0, "Corrupt EXTDEF record");
                 break;
@@ -316,9 +323,8 @@ public:
                     auto name = getIndex(data);
                     enforce(name <= names.length, "Invalid symbol name index");
                     auto type = getIndex(data);
-                    auto sym = new Symbol(null, null, names[name-1], 0);
-                    symtab.reference(sym);
-                    //symbols ~= sym;
+                    auto sym = new ExternSymbol(names[name-1]);
+                    symtab.add(sym);
                     //writeln("CEXTDEF name:", cast(string)names[name-1]);
                 }
                 enforce(data.length == 0, "Corrupt CEXTDEF record");
@@ -335,13 +341,8 @@ public:
                     if (dt == 0x61)
                         length *= getComLength(data);
 
-                    //auto xseg = new Segment("$COMDEF$" ~ names[name-1], SegmentClass.BSS, SegmentAlign.Byte, length);
-                    //segtab.add(xseg);
-                    //writeln(flags, ' ', attributes, ' ', comdat);
-                    //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name, isLocal ? " local" : "");
-                    //if (!(flags & 1))
-                        //symtab.define(new Symbol(this, xseg, names[name-1], offset, comdat, isLocal));
-
+                    auto sym = new ComdefSymbol(name, length);
+                    symtab.add(sym);
                     //writeln("COMDEF name:", cast(string)name);
                 }
                 enforce(data.length == 0, "Corrupt COMDEF record");
@@ -423,8 +424,9 @@ public:
                     enforce(Targt == 2);
                     enforce(frame == 1, "Only FLAT group is supported");
                     //writeln(target, ' ', displacement);
-                    //writeln(cast(string)symbols[target].name);
-                    symtab.setEntry(symbols[target]);
+                    //writeln(cast(string)externs[target].name);
+                    auto sym = symtab.searchName(externs[target]);
+                    symtab.setEntry(sym);
                 }
                 enforce(data.length == 0, "Corrupt MODEND record");
                 modend = true;

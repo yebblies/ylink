@@ -42,7 +42,7 @@ class CombinedSegment
     }
     void dump()
     {
-        writeln("Segment: ", cast(string)name, " (", segclass, ") ", length, " bytes");
+        writeln("Segment: ", cleanString(name), " (", segclass, ") ", length, " bytes");
     }
 }
 
@@ -61,4 +61,17 @@ class Segment
         this.segalign = segalign;
         this.length = length;
     }
+}
+
+string cleanString(immutable(ubyte)[] s)
+{
+    string r;
+    foreach(c; s)
+    {
+        if (c > 0x7F)
+            r ~= '*';
+        else
+            r ~= c;
+    }
+    return r;
 }

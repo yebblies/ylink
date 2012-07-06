@@ -1,4 +1,5 @@
 
+import std.algorithm;
 import std.conv;
 import std.exception;
 import std.stdio;
@@ -22,54 +23,69 @@ class SymbolTable
         enforce(!entryPoint, "Multiple entry points defined");
         entryPoint = sym;
     }
-    void define(Symbol sym)
+    void add(Symbol sym)
     {
-        if (auto s = searchName(sym.name))
+        if (auto p = sym.name in symbols)
         {
-            if (s.mod)
+            if (cast(ExternSymbol)sym)
             {
-                if (sym.comdat == Comdat.Any)
-                {
-                    return;
-                }
-                else
-                {
-                    sym.dump();
-                    s.dump();
-                    writeln(sym.comdat);
-                    writeln(s.comdat);
-                    enforce(false, "Multiple definitions of symbol " ~ cast(string)sym.name);
-                }
+                // Redefining an extern symbol is a no-op
             }
-            else
+            else if (auto s = cast(ExternSymbol)*p)
             {
-                foreach(i; 0..undefined.length)
+                foreach(i, v; undefined)
                 {
-                    if (undefined[i] is s)
+                    if (v is s)
                     {
                         undefined = undefined[0..i] ~ undefined[i+1..$];
                         break;
                     }
                 }
-                s.mod = sym.mod;
-                s.seg = sym.seg;
-                s.offset = sym.offset;
-                s.isLocal = sym.isLocal;
+                *p = sym;
+            }
+            else if (cast(DirectImportSymbol)*p && cast(DirectImportSymbol)sym)
+            {
+            }
+            else if (cast(ImportSymbol)*p && cast(ImportSymbol)sym)
+            {
+            }
+            else if (cast(ComdefSymbol)*p && cast(ComdefSymbol)sym)
+            {
+                auto s = cast(ComdefSymbol)*p;
+                s.size = max(s.size, (cast(ComdefSymbol)sym).size);
+            }
+            else if (cast(PublicSymbol)*p && cast(ComdefSymbol)sym)
+            {
+            }
+            else if (cast(ComdefSymbol)*p && cast(PublicSymbol)sym)
+            {
+                *p = sym;
+            }
+            else if (cast(ComdatSymbol)*p && cast(ComdatSymbol)sym)
+            {
+                auto s = cast(ComdatSymbol)*p;
+                auto x = cast(ComdatSymbol)sym;
+                enforce(s.comdat == x.comdat, "Comdat type mismatch");
+                if (s.comdat == Comdat.Any)
+                {
+                }
+                else
+                {
+                    enforce(false, "Comdat type " ~ to!string(s.comdat) ~ " not implemented");
+                }
+            }
+            else
+            {
+                p.dump();
+                sym.dump();
+                enforce(false, "Multiple definitions of symbol " ~ cast(string)sym.name);
             }
         }
         else
-            symbols[sym.name] = sym;
-    }
-    void reference(Symbol sym)
-    {
-        auto s = searchName(sym.name);
-        if (s)
-            s.references++;
-        else
         {
             symbols[sym.name] = sym;
-            undefined ~= sym;
-            sym.references++;
+            if (cast(ExternSymbol)sym)
+                undefined ~= sym;
         }
     }
     bool hasUndefined()
@@ -111,12 +127,17 @@ class SymbolTable
     }
     void defineImports()
     {
-        foreach(s; symbols)
+        /*foreach(s; symbols)
         {
             if (s.mod && cast(DllModule)s.mod)
             {
                 writeln("Import: ", cast(string)s.name);
             }
-        }
+        }*/
+    }
+    void defineSpecial()
+    {
+        add(new PublicSymbol(null, cast(immutable(ubyte)[])"__end", 0));
+        add(new PublicSymbol(null, cast(immutable(ubyte)[])"__edata", 0));
     }
 }

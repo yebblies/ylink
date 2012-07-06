@@ -15,7 +15,7 @@ class SegmentTable
                 return s;
         return null;
     }
-    void add(Segment seg)
+    CombinedSegment add(Segment seg)
     {
         auto s = searchName(seg.name);
         if (!s)
@@ -25,6 +25,7 @@ class SegmentTable
         }
         enforce(seg.segclass == s.segclass, "Section " ~ cast(string)seg.name ~ " is in multiple classes");
         s.append(seg);
+        return s;
     }
     void dump()
     {
