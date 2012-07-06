@@ -1,18 +1,17 @@
 
 import datafile;
+import modules;
 import omflibraryfile;
 import omfobjectfile;
 import segmenttable;
 import symboltable;
 import workqueue;
 
-abstract class ObjectFile
+abstract class ObjectFile : Module
 {
-    string name;
-
     this(string name)
     {
-        this.name = name;
+        super(name);
     }
 
     static ObjectFile detectFormat(string filename)

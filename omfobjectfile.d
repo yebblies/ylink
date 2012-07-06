@@ -5,6 +5,7 @@ import std.path;
 import std.stdio;
 
 import datafile;
+import modules;
 import omfdef;
 import objectfile;
 import segment;
@@ -27,7 +28,7 @@ public:
     }
     override void dump()
     {
-        writeln("OMF Object file: ", f.filename);
+        //writeln("OMF Object file: ", f.filename);
         f.seek(0);
         while (!f.empty)
         {
@@ -37,10 +38,12 @@ public:
     }
     override void loadSymbols(SymbolTable symtab, SegmentTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
+        //writeln("OMF Object file: ", f.filename);
         immutable(ubyte)[][] sourcefiles;
         immutable(ubyte)[][] names;
         Segment[] segments;
         OmfGroup[] groups;
+        Symbol[] symbols;
 
         objects.append(this);
         f.seek(0);
@@ -55,7 +58,7 @@ public:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
                 sourcefiles ~= r.data[1..$];
-                //writeln(cast(string)r.data[1..$]);
+                writeln(cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
@@ -71,21 +74,52 @@ public:
                 break;
             case OmfRecordType.COMENT:
                 enforce(r.data.length >= 2, "Corrupt COMENT record");
-                auto ctype = r.data[0];
-                auto cclass = r.data[1];
+                auto data = r.data;
+                auto ctype = getByte(data);
+                auto cclass = getByte(data);
                 switch(cclass)
                 {
                 case 0x9D:
-                    checkMemoryModel(r.data[2..$]);
+                    checkMemoryModel(getBytes(data, 2));
+                    break;
+                case 0x9E:
+                    // DOSSEG
                     break;
                 case 0x9F:
-                    queue.append(defaultExtension(cast(string)r.data[2..$], "lib"));
+                    queue.append(defaultExtension(cast(string)data, "lib"));
+                    break;
+                case 0xA0:
+                    auto subtype = getByte(data);
+                    switch(subtype)
+                    {
+                    case 0x01: // IMPDEF
+                        auto isOrdinal = getByte(data);
+                        auto intname = getString(data);
+                        auto modname = getString(data);
+                        ushort entryOrd;
+                        immutable(ubyte)[] expname;
+                        if (isOrdinal)
+                            entryOrd = getWordLE(data);
+                        else
+                        {
+                            expname = getString(data);
+                            if (expname.length == 0)
+                                expname = intname;
+                        }
+                        enforce(data.length == 0, "Corrupt IMPDEF record");
+                        //writeln("IMPDEF int:", cast(string)intname, " mod:", cast(string)modname, " ent:", isOrdinal ? to!string(entryOrd) : cast(string)expname);
+                        symtab.define(new Symbol(new DllModule(cast(string)modname), entryOrd, intname, expname));
+                        break;
+                    default:
+                        enforce(false, "COMENT A0 subtype " ~ to!string(subtype, 16) ~ " not supported");
+                        break;
+                    }
                     break;
                 case 0xA1:
-                    enforce(r.data.length == 5 &&
-                            r.data[2] == 0x01 &&
-                            r.data[3] == 'C' &&
-                            r.data[4] == 'V',
+                    enforce(data.length == 3 &&
+                            getByte(data) == 0x01 &&
+                            getByte(data) == 'C' &&
+                            getByte(data) == 'V',
                             "Only codeview debugging information is supported");
                     break;
                 case 0xA2:
@@ -197,7 +231,7 @@ public:
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                     auto type = getIndex(data);
                     symtab.define(new Symbol(this, seg ? segments[seg-1] : null, name, offset));
-                    writeln("PUBDEF name:", cast(string)name, " ", seg ? cast(string)segments[seg-1].name : "__abs__", "+", offset);
+                    //writeln("PUBDEF name:", cast(string)name, " ", seg ? cast(string)segments[seg-1].name : "__abs__", "+", offset);
                 }
                 enforce(data.length == 0, "Corrupt PUBDEF record");
                 break;
@@ -206,6 +240,7 @@ public:
                 auto off16 = (r.type == OmfRecordType.PUBDEF16);
                 auto data = r.data;
                 auto flags = getByte(data);
+                auto isLocal = (flags & 0x4) != 0;
                 enforce(flags < 8, "COMDAT flag not supported: " ~ to!string(flags));
                 auto attributes = getByte(data);
                 Comdat comdat;
@@ -250,9 +285,9 @@ public:
                 auto xseg = new Segment(seg.name ~ '$' ~ names[name-1], seg.segclass, segalign, length);
                 segtab.add(xseg);
                 //writeln(flags, ' ', attributes, ' ', comdat);
-                //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name);
+                //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name, isLocal ? " local" : "");
                 if (!(flags & 1))
-                    symtab.define(new Symbol(this, xseg, names[name-1], offset, comdat));
+                    symtab.define(new Symbol(this, xseg, names[name-1], offset, comdat, isLocal));
                 break;
             case OmfRecordType.EXTDEF:
                 auto data = r.data;
@@ -261,7 +296,9 @@ public:
                     auto length = getByte(data);
                     auto name = getBytes(data, length);
                     auto type = getIndex(data);
-                    symtab.reference(new Symbol(null, null, name, 0));
+                    auto sym = new Symbol(null, null, name, 0);
+                    symtab.reference(sym);
+                    symbols ~= sym;
                     //writeln("EXTDEF name:", cast(string)name);
                 }
                 enforce(data.length == 0, "Corrupt EXTDEF record");
@@ -273,7 +310,9 @@ public:
                     auto name = getIndex(data);
                     enforce(name <= names.length, "Invalid symbol name index");
                     auto type = getIndex(data);
-                    symtab.reference(new Symbol(null, null, names[name-1], 0));
+                    auto sym = new Symbol(null, null, names[name-1], 0);
+                    symtab.reference(sym);
+                    //symbols ~= sym;
                     //writeln("CEXTDEF name:", cast(string)names[name-1]);
                 }
                 enforce(data.length == 0, "Corrupt CEXTDEF record");
@@ -303,8 +342,38 @@ public:
             case OmfRecordType.LIDATA16:
             case OmfRecordType.LIDATA32:
             case OmfRecordType.FIXUPP16:
-            case OmfRecordType.FIXUPP32:
                 // Data definitions are skipped in the first pass
+                break;
+            case OmfRecordType.FIXUPP32:
+                auto data = r.data;
+                while (data.length)
+                {
+                    if ((data[0] & 0x80) == 0)
+                    {
+                        auto head = getByte(data);
+                        auto index = getIndex(data);
+                    }
+                    else
+                    {
+                        auto locat = getWordLE(data);
+                        auto fixdata = getByte(data);
+                        auto F = (fixdata & 0x80) != 0;
+                        auto frametype = (fixdata & 0x70) >> 4;
+                        auto T = (fixdata & 0x08) != 0;
+                        auto P = (fixdata & 0x04) != 0;
+                        auto Targt = (fixdata & 0x03);
+                        ushort frame;
+                        if (!F)
+                            frame = getIndex(data);
+                        ushort target;
+                        if (!T)
+                            target = getIndex(data);
+                        uint displacement;
+                        if (P == 0)
+                            displacement = getDwordLE(data);
+                    }
+                }
+                enforce(data.length == 0, "Corrupt FIXUPP record");
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
@@ -315,7 +384,33 @@ public:
                 auto hasStart = (type & 0x40) != 0;
                 auto relStart = (type & 0x01) != 0;
                 enforce(!hasStart || relStart, "Relocatable start address flag must be set");
-                enforce(!hasStart, "FIXME start address");
+                if (hasStart)
+                {
+                    auto fixdata = getByte(data);
+                    auto F = (fixdata & 0x80) != 0;
+                    auto frametype = (fixdata & 0x70) >> 4;
+                    auto T = (fixdata & 0x08) != 0;
+                    auto P = (fixdata & 0x04) != 0;
+                    auto Targt = (fixdata & 0x03);
+                    ushort frame;
+                    if (!F)
+                        frame = getIndex(data);
+                    ushort target;
+                    if (!T)
+                        target = getIndex(data);
+                    uint displacement;
+                    if (!P)
+                        displacement = getDwordLE(data);
+                    enforce(!P, "Displacement must be present for start address");
+                    enforce(!F);
+                    enforce(!T);
+                    enforce(frametype == 1);
+                    enforce(Targt == 2);
+                    enforce(frame == 1, "Only FLAT group is supported");
+                    //writeln(target, ' ', displacement);
+                    //writeln(cast(string)symbols[target].name);
+                    symtab.setEntry(symbols[target]);
+                }
                 enforce(data.length == 0, "Corrupt MODEND record");
                 modend = true;
                 break;
@@ -324,6 +419,7 @@ public:
                 break;
             }
         }
+        symtab.purgeLocals();
     }
 private:
     OmfRecord loadRecord()

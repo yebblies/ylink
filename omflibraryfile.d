@@ -31,6 +31,8 @@ public:
     }
     override void loadSymbols(SymbolTable symtab, SegmentTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
+        writeln("OMF Library file: ", f.filename);
+        //symtab.dumpUndefined();
         if (!symtab.hasUndefined())
             return;
 
@@ -88,6 +90,7 @@ public:
                 {
                     auto page = symbols[sym.name];
                     auto obj = new OmfObjectFile(new DataFile(f, page * pagesize));
+                    //writeln("Pulling in object ", page, " due to undefined symbol: ", cast(string)sym.name);
                     obj.loadSymbols(symtab, segtab, queue, objects);
                     progress = true;
                     break;

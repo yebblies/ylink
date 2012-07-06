@@ -8,11 +8,17 @@ class SymbolTable
 {
     Symbol[immutable(ubyte)[]] symbols;
     Symbol[] undefined;
+    Symbol entryPoint;
 
     Symbol searchName(immutable(ubyte)[] name)
     {
         auto p = name in symbols;
         return p ? *p : null;
+    }
+    void setEntry(Symbol sym)
+    {
+        enforce(!entryPoint, "Multiple entry points defined");
+        entryPoint = sym;
     }
     void define(Symbol sym)
     {
@@ -26,6 +32,10 @@ class SymbolTable
                 }
                 else
                 {
+                    sym.dump();
+                    s.dump();
+                    writeln(sym.comdat);
+                    writeln(s.comdat);
                     enforce(false, "Multiple definitions of symbol " ~ cast(string)sym.name);
                 }
             }
@@ -42,6 +52,7 @@ class SymbolTable
                 s.mod = sym.mod;
                 s.seg = sym.seg;
                 s.offset = sym.offset;
+                s.isLocal = sym.isLocal;
             }
         }
         else
@@ -68,5 +79,32 @@ class SymbolTable
         writeln("Symbol Table:");
         foreach(s; symbols)
             s.dump();
+    }
+    void dumpUndefined()
+    {
+        writeln("Undefined Symbols:");
+        foreach(s; undefined)
+            s.dump();
+    }
+    void purgeLocals()
+    {
+        immutable(ubyte)[][] names;
+        foreach(name, s; symbols)
+        {
+            if (s.isLocal)
+                names ~= name;
+        }
+        foreach(name; names)
+        {
+            symbols.remove(name);
+        }
+    }
+    void checkUnresolved()
+    {
+        foreach(s; undefined)
+        {
+            writeln("Error: No definition for symbol: ", cast(string)s.name);
+        }
+        enforce(false, "Unresolved symbols found");
     }
 }
