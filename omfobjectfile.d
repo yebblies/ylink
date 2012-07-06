@@ -1,4 +1,5 @@
 
+import std.algorithm;
 import std.exception;
 import std.conv;
 import std.path;
@@ -58,7 +59,7 @@ public:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
                 sourcefiles ~= r.data[1..$];
-                writeln(cast(string)r.data[1..$]);
+                writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
@@ -296,6 +297,11 @@ public:
                     auto length = getByte(data);
                     auto name = getBytes(data, length);
                     auto type = getIndex(data);
+                    if (name.startsWith("__imp_"))
+                    {
+                        symtab.reference(new Symbol(null, 0, name[6..$], null));
+                        //writeln("EXTDEF name:", cast(string)name[6..$]);
+                    }
                     auto sym = new Symbol(null, null, name, 0);
                     symtab.reference(sym);
                     symbols ~= sym;
@@ -328,6 +334,15 @@ public:
                     auto length = getComLength(data);
                     if (dt == 0x61)
                         length *= getComLength(data);
+
+                    //auto xseg = new Segment("$COMDEF$" ~ names[name-1], SegmentClass.BSS, SegmentAlign.Byte, length);
+                    //segtab.add(xseg);
+                    //writeln(flags, ' ', attributes, ' ', comdat);
+                    //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name, isLocal ? " local" : "");
+                    //if (!(flags & 1))
+                        //symtab.define(new Symbol(this, xseg, names[name-1], offset, comdat, isLocal));
+
+                    //writeln("COMDEF name:", cast(string)name);
                 }
                 enforce(data.length == 0, "Corrupt COMDEF record");
                 break;

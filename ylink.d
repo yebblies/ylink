@@ -59,5 +59,6 @@ void main(string[] args)
     }
     //segtab.dump();
     //symtab.dump();
+    symtab.defineImports();
     symtab.checkUnresolved();
 }

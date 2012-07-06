@@ -1,7 +1,9 @@
 
+import std.conv;
 import std.exception;
 import std.stdio;
 
+import modules;
 import symbol;
 
 class SymbolTable
@@ -105,6 +107,16 @@ class SymbolTable
         {
             writeln("Error: No definition for symbol: ", cast(string)s.name);
         }
-        enforce(false, "Unresolved symbols found");
+        enforce(undefined.length == 0, to!string(undefined.length) ~ " unresolved symbols found");
+    }
+    void defineImports()
+    {
+        foreach(s; symbols)
+        {
+            if (s.mod && cast(DllModule)s.mod)
+            {
+                writeln("Import: ", cast(string)s.name);
+            }
+        }
     }
 }
