@@ -59,7 +59,10 @@ void main(string[] args)
     }
     symtab.defineImports();
     symtab.defineSpecial();
-    //segtab.dump();
-    //symtab.dump();
+    if (dump)
+    {
+        segtab.dump();
+        symtab.dump();
+    }
     symtab.checkUnresolved();
 }
