@@ -374,7 +374,7 @@ public:
                 // Data definitions are skipped in the first pass
                 break;
             case OmfRecordType.FIXUPP32:
-                auto data = r.data;
+                /*auto data = r.data;
                 while (data.length)
                 {
                     if ((data[0] & 0x80) == 0)
@@ -402,7 +402,7 @@ public:
                             displacement = getDwordLE(data);
                     }
                 }
-                enforce(data.length == 0, "Corrupt FIXUPP record");
+                enforce(data.length == 0, "Corrupt FIXUPP record");*/
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
