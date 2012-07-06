@@ -19,6 +19,8 @@ enum SegmentClass
     TLS,
     ENDBSS,
     STACK,
+    DEBSYM,
+    DEBTYP,
 }
 
 class CombinedSegment

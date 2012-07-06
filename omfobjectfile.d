@@ -154,8 +154,17 @@ public:
                     enforce(false, "Invalid alignment value");
                     break;
                 }
-                enforce(C == 2 || C == 5, "Only public segments are supported: " ~ to!string(C));
-                if (C == 5) segalign = SegmentAlign.align_1;
+                switch(C)
+                {
+                case 5:
+                    segalign = SegmentAlign.align_1;
+                case 2, 4, 7:
+                case 0:
+                    break;
+                default:
+                    enforce(false, "Segment combination not supported: " ~ to!string(C));
+                    break;
+                }
                 enforce(!B, "Big segments are not supported");
                 enforce(P, "Use16 segments are not supported");
                 data = data[1..$];
@@ -183,6 +192,8 @@ public:
                 case "tls":    segclass = SegmentClass.TLS;    break;
                 case "ENDBSS": segclass = SegmentClass.ENDBSS; break;
                 case "STACK":  segclass = SegmentClass.STACK;  break;
+                case "DEBSYM": segclass = SegmentClass.DEBSYM;  break;
+                case "DEBTYP": segclass = SegmentClass.DEBSYM;  break;
                 default:
                     enforce(false, "Unknown segment class: " ~ cast(string)names[cname-1]);
                     break;
@@ -358,6 +369,8 @@ public:
             case OmfRecordType.LIDATA16:
             case OmfRecordType.LIDATA32:
             case OmfRecordType.FIXUPP16:
+            case OmfRecordType.LINNUM:
+            case OmfRecordType.LINSYM:
                 // Data definitions are skipped in the first pass
                 break;
             case OmfRecordType.FIXUPP32:
