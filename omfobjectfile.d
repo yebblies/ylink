@@ -435,8 +435,7 @@ public:
                     enforce(frame == 1, "Only FLAT group is supported");
                     //writeln(target, ' ', displacement);
                     //writeln(cast(string)externs[target].name);
-                    auto sym = symtab.searchName(externs[target]);
-                    symtab.setEntry(sym);
+                    symtab.setEntry(externs[target]);
                 }
                 enforce(data.length == 0, "Corrupt MODEND record");
                 modend = true;

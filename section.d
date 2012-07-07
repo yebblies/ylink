@@ -22,6 +22,7 @@ enum SectionClass
     STACK,
     DEBSYM,
     DEBTYP,
+    IData,
 }
 
 class CombinedSection
