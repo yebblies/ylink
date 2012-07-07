@@ -1,5 +1,5 @@
 
-class WorkQueue(T)
+final class WorkQueue(T)
 {
     T[] files;
 

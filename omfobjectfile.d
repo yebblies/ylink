@@ -18,7 +18,7 @@ import workqueue;
 
 public:
 
-class OmfObjectFile : ObjectFile
+final class OmfObjectFile : ObjectFile
 {
 private:
     DataFile f;
@@ -47,6 +47,7 @@ public:
         OmfGroup[] groups;
         immutable(ubyte)[][] externs;
 
+        symtab = new SymbolTable(symtab);
         objects.append(this);
         f.seek(0);
         enforce(f.peekByte() == 0x80, "First record must be THEADR");
@@ -430,7 +431,7 @@ public:
                 break;
             }
         }
-        symtab.purgeLocals();
+        symtab.merge();
     }
 private:
     OmfRecord loadRecord()

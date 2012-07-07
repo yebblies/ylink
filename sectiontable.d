@@ -5,7 +5,7 @@ import std.stdio;
 import section;
 import segment;
 
-class SectionTable
+final class SectionTable
 {
     CombinedSection[] sections;
 

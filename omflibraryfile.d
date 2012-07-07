@@ -12,7 +12,7 @@ import symbol;
 import symboltable;
 import workqueue;
 
-class OmfLibraryFile : ObjectFile
+final class OmfLibraryFile : ObjectFile
 {
 private:
     DataFile f;

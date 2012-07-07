@@ -26,7 +26,7 @@ enum SectionAlign
     align_page = 4096,
 }
 
-class CombinedSection
+final class CombinedSection
 {
     immutable(ubyte)[] name;
     SectionClass secclass;
@@ -54,7 +54,7 @@ class CombinedSection
     }
 }
 
-class Section
+final class Section
 {
     immutable(ubyte)[] name;
     SectionClass secclass;

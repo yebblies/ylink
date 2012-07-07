@@ -47,7 +47,7 @@ void main(string[] args)
         queue.append(defaultExtension(filename, "obj"));
 
     auto sectab = new SectionTable();
-    auto symtab = new SymbolTable();
+    auto symtab = new SymbolTable(null);
     auto objects = new WorkQueue!ObjectFile();
     while (!queue.empty())
     {

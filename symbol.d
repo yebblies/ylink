@@ -27,7 +27,7 @@ abstract class Symbol
     abstract void dump();
 }
 
-class PublicSymbol : Symbol
+final class PublicSymbol : Symbol
 {
     Section sec;
     uint offset;
@@ -43,7 +43,7 @@ class PublicSymbol : Symbol
     }
 }
 
-class ExternSymbol : Symbol
+final class ExternSymbol : Symbol
 {
     Symbol sym;
     this(immutable(ubyte)[] name)
@@ -56,7 +56,7 @@ class ExternSymbol : Symbol
     }
 }
 
-class ComdatSymbol : Symbol
+final class ComdatSymbol : Symbol
 {
     Section sec;
     CombinedSection csec;
@@ -76,7 +76,7 @@ class ComdatSymbol : Symbol
     }
 }
 
-class ComdefSymbol : Symbol
+final class ComdefSymbol : Symbol
 {
     uint size;
     this(immutable(ubyte)[] name, uint size)
@@ -90,7 +90,7 @@ class ComdefSymbol : Symbol
     }
 }
 
-class ImportSymbol : Symbol
+final class ImportSymbol : Symbol
 {
     immutable(ubyte)[] modname;
     ushort expOrd;

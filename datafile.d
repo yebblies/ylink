@@ -2,7 +2,7 @@
 import std.file;
 import std.stdio;
 
-class DataFile
+final class DataFile
 {
     string filename;
 private:

@@ -19,7 +19,7 @@ enum SegmentType
     Reloc,
 }
 
-class Segment
+final class Segment
 {
     SegmentType type;
 }

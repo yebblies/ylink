@@ -9,13 +9,18 @@ import section;
 import segment;
 import symbol;
 
-class SymbolTable
+final class SymbolTable
 {
+    SymbolTable parent;
     Symbol[immutable(ubyte)[]] symbols;
     Symbol[] undefined;
     immutable(ubyte)[] entryPoint;
     ImportSymbol[][immutable(ubyte)[]] imports;
 
+    this(SymbolTable parent)
+    {
+        this.parent = parent;
+    }
     Symbol searchName(immutable(ubyte)[] name)
     {
         auto p = name in symbols;
@@ -23,8 +28,13 @@ class SymbolTable
     }
     void setEntry(immutable(ubyte)[] name)
     {
-        enforce(!entryPoint.length, "Multiple entry points defined");
-        entryPoint = name;
+        if (parent)
+            parent.setEntry(name);
+        else
+        {
+            enforce(!entryPoint.length, "Multiple entry points defined");
+            entryPoint = name;
+        }
     }
     void add(Symbol sym)
     {
@@ -106,18 +116,12 @@ class SymbolTable
         foreach(s; undefined)
             s.dump();
     }
-    void purgeLocals()
+    void merge()
     {
-        immutable(ubyte)[][] names;
-        foreach(name, s; symbols)
-        {
-            if (s.isLocal)
-                names ~= name;
-        }
-        foreach(name; names)
-        {
-            symbols.remove(name);
-        }
+        assert(parent);
+        foreach(sym; symbols)
+            if (!sym.isLocal)
+                parent.add(sym);
     }
     void checkUnresolved()
     {
