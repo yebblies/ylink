@@ -57,8 +57,8 @@ void main(string[] args)
         enforce(object, "Unknown object file format: " ~ filename);
         object.loadSymbols(symtab, sectab, queue, objects);
     }
-    sectab.add(symtab.defineImports());
-    symtab.defineSpecial();
+    symtab.defineImports(sectab);
+    symtab.defineSpecial(sectab);
     if (dump)
     {
         sectab.dump();

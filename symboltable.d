@@ -6,7 +6,7 @@ import std.stdio;
 
 import modules;
 import section;
-import segment;
+import sectiontable;
 import symbol;
 
 final class SymbolTable
@@ -134,7 +134,7 @@ final class SymbolTable
         enforce(undefcount == 0, "Error: " ~ to!string(undefcount) ~ " unresolved symbols found");
         enforce(entryPoint.length, "Error: No entry point defined");
     }
-    Section defineImports()
+    void defineImports(SectionTable sectab)
     {
         auto sec = new Section(cast(immutable(ubyte)[])".idata", SectionClass.IData, SectionAlign.align_2, 0);
         size_t offset;
@@ -167,12 +167,16 @@ final class SymbolTable
         offset += importEntrySize; // null entry
         sec.length = offset;
         //writeln("Defined import segment: ", offset, " bytes");
-        return sec;
+        sectab.add(sec);
     }
-    void defineSpecial()
+    void defineSpecial(SectionTable sectab)
     {
-        add(new PublicSymbol(null, cast(immutable(ubyte)[])"__end", 0));
-        add(new PublicSymbol(null, cast(immutable(ubyte)[])"__edata", 0));
+        auto dataend = new Section(cast(immutable(ubyte)[])"__dataend", SectionClass.Data, SectionAlign.align_1, 0);
+        auto bssend = new Section(cast(immutable(ubyte)[])"__bssend", SectionClass.ENDBSS, SectionAlign.align_1, 0);
+        sectab.add(dataend);
+        sectab.add(bssend);
+        add(new PublicSymbol(dataend, cast(immutable(ubyte)[])"__edata", 0));
+        add(new PublicSymbol(bssend, cast(immutable(ubyte)[])"__end", 0));
     }
 private:
     void removeUndefined(Symbol s)
