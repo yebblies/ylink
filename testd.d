@@ -1,6 +1,6 @@
 
-__gshared int global_shared;
-int global_tls;
+__gshared int global_shared = 0x12345678;
+uint global_tls = 0x89898989;
 extern int global_extern;
 
 extern(C) extern int _imp__blah();
@@ -13,7 +13,7 @@ public void func()
 int main()
 {
     __gshared int static_shared;
-    static int static_tls;
+    static uint static_tls = 0x89898989;
     global_shared = global_tls + static_shared + static_tls;
     func();
     auto a = 1;

@@ -1,4 +1,5 @@
 
+import std.algorithm;
 import std.stdio;
 
 enum SectionAlign
@@ -29,6 +30,7 @@ class CombinedSection
     SectionClass secclass;
     Section[] members;
     uint length;
+    SectionAlign secalign = SectionAlign.align_1;
 
     this(immutable(ubyte)[] name, SectionClass secclass)
     {
@@ -37,6 +39,7 @@ class CombinedSection
     }
     void append(Section sec)
     {
+        secalign = max(secalign, sec.secalign);
         length = (length + sec.secalign - 1) & ~cast(uint)(sec.secalign - 1);
         sec.offset = length;
         length += sec.length;
@@ -45,7 +48,7 @@ class CombinedSection
     }
     void dump()
     {
-        writeln("Section: ", cleanString(name), " (", secclass, ") ", length, " bytes");
+        writeln("Section: ", cleanString(name), " (", secclass, ") ", length, " bytes align:", secalign);
     }
 }
 

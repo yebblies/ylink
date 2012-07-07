@@ -31,9 +31,11 @@ class SymbolTable
             if (cast(ExternSymbol)sym)
             {
                 // Redefining an extern symbol is a no-op
+                p.refCount++;
             }
             else if (cast(ExternSymbol)*p)
             {
+                sym.refCount += p.refCount;
                 removeUndefined(*p);
                 *p = sym;
                 if (cast(ImportSymbol)sym)
@@ -60,7 +62,11 @@ class SymbolTable
                 auto s = cast(ComdatSymbol)*p;
                 auto x = cast(ComdatSymbol)sym;
                 enforce(s.comdat == x.comdat, "Comdat type mismatch");
-                if (s.comdat == Comdat.Any)
+                if (s.comdat == Comdat.Unique)
+                {
+                    enforce(false, "Multiple definitions of symbol " ~ cast(string)sym.name);
+                }
+                else if (s.comdat == Comdat.Any)
                 {
                 }
                 else
@@ -70,8 +76,6 @@ class SymbolTable
             }
             else
             {
-                p.dump();
-                sym.dump();
                 enforce(false, "Multiple definitions of symbol " ~ cast(string)sym.name);
             }
         }
