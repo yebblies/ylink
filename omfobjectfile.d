@@ -59,7 +59,7 @@ public:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
                 sourcefile = r.data[1..$];
-                writeln("Module: ", cast(string)r.data[1..$]);
+                //writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
@@ -314,17 +314,13 @@ public:
                     auto type = getIndex(data);
                     if (name.startsWith("__imp_"))
                     {
-                        symtab.add(new ImportSymbol(null, 0, name[6..$], null));
-                        symtab.add(new DirectImportSymbol(null, 0, name, null));
+                        symtab.add(new ExternSymbol(name[6..$]));
                         //writeln("EXTDEF name:", cast(string)name[6..$]);
                     }
-                    else
-                    {
-                        auto sym = new ExternSymbol(name);
-                        symtab.add(sym);
-                        externs ~= name;
-                        //writeln("EXTDEF name:", cast(string)name);
-                    }
+                    auto sym = new ExternSymbol(name);
+                    symtab.add(sym);
+                    externs ~= name;
+                    //writeln("EXTDEF name:", cast(string)name);
                 }
                 enforce(data.length == 0, "Corrupt EXTDEF record");
                 break;

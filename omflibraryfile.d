@@ -31,7 +31,7 @@ public:
     }
     override void loadSymbols(SymbolTable symtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
-        writeln("OMF Library file: ", f.filename);
+        //writeln("OMF Library file: ", f.filename);
         //symtab.dumpUndefined();
         if (!symtab.hasUndefined())
             return;

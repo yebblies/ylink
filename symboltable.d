@@ -12,6 +12,7 @@ class SymbolTable
     Symbol[immutable(ubyte)[]] symbols;
     Symbol[] undefined;
     Symbol entryPoint;
+    Symbol[] imports;
 
     Symbol searchName(immutable(ubyte)[] name)
     {
@@ -31,23 +32,16 @@ class SymbolTable
             {
                 // Redefining an extern symbol is a no-op
             }
-            else if (auto s = cast(ExternSymbol)*p)
+            else if (cast(ExternSymbol)*p)
             {
-                foreach(i, v; undefined)
-                {
-                    if (v is s)
-                    {
-                        undefined = undefined[0..i] ~ undefined[i+1..$];
-                        break;
-                    }
-                }
+                removeUndefined(*p);
                 *p = sym;
-            }
-            else if (cast(DirectImportSymbol)*p && cast(DirectImportSymbol)sym)
-            {
+                if (cast(ImportSymbol)sym)
+                    imports ~= sym;
             }
             else if (cast(ImportSymbol)*p && cast(ImportSymbol)sym)
             {
+                enforce(false, "Redefinition of import " ~ cast(string)sym.name);
             }
             else if (cast(ComdefSymbol)*p && cast(ComdefSymbol)sym)
             {
@@ -119,25 +113,41 @@ class SymbolTable
     }
     void checkUnresolved()
     {
+        size_t undefcount;
         foreach(s; undefined)
         {
-            writeln("Error: No definition for symbol: ", cast(string)s.name);
+            if (!s.name.startsWith(cast(immutable(ubyte)[])"__imp_"))
+            {
+                writeln("Error: No definition for symbol: ", cast(string)s.name);
+                undefcount++;
+            }
         }
-        enforce(undefined.length == 0, to!string(undefined.length) ~ " unresolved symbols found");
+        enforce(undefcount == 0, to!string(undefcount) ~ " unresolved symbols found");
     }
     void defineImports()
     {
-        /*foreach(s; symbols)
+        foreach(s; imports)
         {
-            if (s.mod && cast(DllModule)s.mod)
-            {
-                writeln("Import: ", cast(string)s.name);
-            }
-        }*/
+            enforce(cast(ImportSymbol)s);
+            s.dump();
+        }
+        writeln(imports.length, " imports");
     }
     void defineSpecial()
     {
         add(new PublicSymbol(null, cast(immutable(ubyte)[])"__end", 0));
         add(new PublicSymbol(null, cast(immutable(ubyte)[])"__edata", 0));
+    }
+    void removeUndefined(Symbol s)
+    {
+        foreach(i, v; undefined)
+        {
+            if (v is s)
+            {
+                undefined = undefined[0..i] ~ undefined[i+1..$];
+                return;
+            }
+        }
+        assert(0);
     }
 }

@@ -4,6 +4,7 @@ int global_tls;
 extern int global_extern;
 
 extern(C) extern int _imp__blah();
+extern(C) extern int _imp__;
 
 public void func()
 {
@@ -18,6 +19,6 @@ int main()
     auto a = 1;
     auto b = a + 1;
     auto c = a + b + 1;
-    _imp__blah();
+    //_imp__ = _imp__blah();
     return c;
 }

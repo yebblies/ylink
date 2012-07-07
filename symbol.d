@@ -118,24 +118,6 @@ class ImportSymbol : Symbol
     }
 }
 
-class DirectImportSymbol : Symbol
-{
-    immutable(ubyte)[] modname;
-    ushort expOrd;
-    immutable(ubyte)[] expName;
-    this(immutable(ubyte)[] modname, ushort expOrd, immutable(ubyte)[] intName, immutable(ubyte)[] expName)
-    {
-        super(intName);
-        this.modname = modname;
-        this.expOrd = expOrd;
-        this.expName = expName;
-    }
-    override void dump()
-    {
-        writeln("XImport: ", cleanString(name), " = ", cast(string)modname, ":", expName.length ? cast(string)expName : to!string(expOrd));
-    }
-}
-
 string cleanString(immutable(ubyte)[] s)
 {
     string r;
