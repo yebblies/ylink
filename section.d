@@ -2,15 +2,6 @@
 import std.algorithm;
 import std.stdio;
 
-enum SectionAlign
-{
-    align_1 = 1,
-    align_2 = 2,
-    align_4 = 4,
-    align_16 = 16,
-    align_page = 4096,
-}
-
 enum SectionClass
 {
     Code,
@@ -22,7 +13,17 @@ enum SectionClass
     STACK,
     DEBSYM,
     DEBTYP,
+    // generated
     IData,
+}
+
+enum SectionAlign
+{
+    align_1 = 1,
+    align_2 = 2,
+    align_4 = 4,
+    align_16 = 16,
+    align_page = 4096,
 }
 
 class CombinedSection

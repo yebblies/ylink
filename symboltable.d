@@ -6,6 +6,7 @@ import std.stdio;
 
 import modules;
 import section;
+import segment;
 import symbol;
 
 class SymbolTable

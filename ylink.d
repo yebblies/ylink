@@ -65,4 +65,5 @@ void main(string[] args)
         symtab.dump();
     }
     symtab.checkUnresolved();
+    auto segments = sectab.allocateSegments();
 }

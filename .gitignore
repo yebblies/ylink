@@ -4,4 +4,5 @@
 *.map
 *.asm
 *.log
+*.def
 log.txt

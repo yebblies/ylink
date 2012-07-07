@@ -3,6 +3,7 @@ import std.exception;
 import std.stdio;
 
 import section;
+import segment;
 
 class SectionTable
 {
@@ -32,5 +33,10 @@ class SectionTable
         writeln("Section Table:");
         foreach(s; sections)
             s.dump();
+    }
+    Segment[] allocateSegments()
+    {
+        Segment[] segments;
+        return null;
     }
 }

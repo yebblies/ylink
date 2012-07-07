@@ -11,6 +11,7 @@ import omfdef;
 import objectfile;
 import section;
 import sectiontable;
+import segment;
 import symbol;
 import symboltable;
 import workqueue;
@@ -182,23 +183,7 @@ public:
                 auto cname = getIndex(data);
                 enforce(cname <= names.length, "Invalid class name index");
 
-                SectionClass secclass;
-                switch(cast(string)names[cname-1])
-                {
-                case "CODE":   secclass = SectionClass.Code;   break;
-                case "DATA":   secclass = SectionClass.Data;   break;
-                case "CONST":  secclass = SectionClass.Const;  break;
-                case "BSS":    secclass = SectionClass.BSS;    break;
-                case "tls":    secclass = SectionClass.TLS;    break;
-                case "ENDBSS": secclass = SectionClass.ENDBSS; break;
-                case "STACK":  secclass = SectionClass.STACK;  break;
-                case "DEBSYM": secclass = SectionClass.DEBSYM;  break;
-                case "DEBTYP": secclass = SectionClass.DEBSYM;  break;
-                default:
-                    enforce(false, "Unknown section class: " ~ cast(string)names[cname-1]);
-                    break;
-                }
-
+                auto secclass = getSectionClass(names[cname-1]);
                 auto overlayName = getIndex(data); // Discard
                 enforce(overlayName <= names.length, "Invalid overlay name index");
                 enforce(data.length == 0, "Corrupt SEGDEF record");
@@ -513,5 +498,26 @@ private:
                 enforce(false, "Corrupt COMENT record");
             }
         }
+    }
+    SectionClass getSectionClass(immutable(ubyte)[] name)
+    {
+        SectionClass secclass;
+        with(SectionClass)
+        switch(cast(string)name)
+        {
+        case "CODE":   secclass = Code;   break;
+        case "DATA":   secclass = Data;   break;
+        case "CONST":  secclass = Const;  break;
+        case "BSS":    secclass = BSS;    break;
+        case "tls":    secclass = TLS;    break;
+        case "ENDBSS": secclass = ENDBSS; break;
+        case "STACK":  secclass = STACK;  break;
+        case "DEBSYM": secclass = DEBSYM;  break;
+        case "DEBTYP": secclass = DEBSYM;  break;
+        default:
+            enforce(false, "Unknown section class: " ~ cast(string)name);
+            break;
+        }
+        return secclass;
     }
 }
