@@ -8,7 +8,7 @@ import objectfile;
 import omfobjectfile;
 import paths;
 import relocation;
-import segmenttable;
+import sectiontable;
 import symboltable;
 import workqueue;
 
@@ -46,7 +46,7 @@ void main(string[] args)
     foreach(filename; objectFilenames)
         queue.append(defaultExtension(filename, "obj"));
 
-    auto segtab = new SegmentTable();
+    auto sectab = new SectionTable();
     auto symtab = new SymbolTable();
     auto objects = new WorkQueue!ObjectFile();
     while (!queue.empty())
@@ -55,13 +55,13 @@ void main(string[] args)
         enforce(paths.search(filename), "File not found: " ~ filename);
         auto object = ObjectFile.detectFormat(filename);
         enforce(object, "Unknown object file format: " ~ filename);
-        object.loadSymbols(symtab, segtab, queue, objects);
+        object.loadSymbols(symtab, sectab, queue, objects);
     }
     symtab.defineImports();
     symtab.defineSpecial();
     if (dump)
     {
-        segtab.dump();
+        sectab.dump();
         symtab.dump();
     }
     symtab.checkUnresolved();

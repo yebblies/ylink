@@ -4,7 +4,7 @@ import std.stdio;
 
 import modules;
 import objectfile;
-import segment;
+import section;
 
 enum Comdat
 {
@@ -35,17 +35,17 @@ abstract class Symbol
 
 class PublicSymbol : Symbol
 {
-    Segment seg;
+    Section sec;
     uint offset;
-    this(Segment seg, immutable(ubyte)[] name, uint offset)
+    this(Section sec, immutable(ubyte)[] name, uint offset)
     {
         super(name);
-        this.seg = seg;
+        this.sec = sec;
         this.offset = offset;
     }
     override void dump()
     {
-        writeln("Public: ", cleanString(name), " = ", seg ? cast(string)seg.name : "_abs_", "+", offset);
+        writeln("Public: ", cleanString(name), " = ", sec ? cast(string)sec.name : "_abs_", "+", offset);
     }
 }
 
@@ -68,21 +68,21 @@ class ExternSymbol : Symbol
 
 class ComdatSymbol : Symbol
 {
-    Segment seg;
-    CombinedSegment cseg;
+    Section sec;
+    CombinedSection csec;
     uint offset;
     Comdat comdat;
-    this(Segment seg, CombinedSegment cseg, immutable(ubyte)[] name, uint offset, Comdat comdat, bool isLocal)
+    this(Section sec, CombinedSection csec, immutable(ubyte)[] name, uint offset, Comdat comdat, bool isLocal)
     {
         super(name, isLocal);
-        this.seg = seg;
-        this.cseg = cseg;
+        this.sec = sec;
+        this.csec = csec;
         this.offset = offset;
         this.comdat = comdat;
     }
     override void dump()
     {
-        writeln("Comdat: ", cleanString(name), " = ", seg ? cast(string)seg.name : "_abs_", "+", offset, " (", comdat, ")", isLocal ? " Local" : "");
+        writeln("Comdat: ", cleanString(name), " = ", sec ? cast(string)sec.name : "_abs_", "+", offset, " (", comdat, ")", isLocal ? " Local" : "");
     }
 }
 

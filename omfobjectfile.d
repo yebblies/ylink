@@ -9,8 +9,8 @@ import datafile;
 import modules;
 import omfdef;
 import objectfile;
-import segment;
-import segmenttable;
+import section;
+import sectiontable;
 import symbol;
 import symboltable;
 import workqueue;
@@ -37,12 +37,12 @@ public:
             r.dump();
         }
     }
-    override void loadSymbols(SymbolTable symtab, SegmentTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
+    override void loadSymbols(SymbolTable symtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
         //writeln("OMF Object file: ", f.filename);
         immutable(ubyte)[] sourcefile;
         immutable(ubyte)[][] names;
-        Segment[] segments;
+        Section[] sections;
         OmfGroup[] groups;
         immutable(ubyte)[][] externs;
 
@@ -139,17 +139,17 @@ public:
                 auto B = (data[0] & 2) != 0;
                 auto P = (data[0] & 1) != 0;
 
-                SegmentAlign segalign;
+                SectionAlign secalign;
                 switch(A)
                 {
-                case 0: //alignment = SegmentAlignment.absolute;   break;
-                    enforce(false, "Absolute segments are not supported");
+                case 0: //alignment = SectionAlignment.absolute;   break;
+                    enforce(false, "Absolute sections are not supported");
                     break;
-                case 1: segalign = SegmentAlign.align_1;    break;
-                case 2: segalign = SegmentAlign.align_2;    break;
-                case 3: segalign = SegmentAlign.align_16;   break;
-                case 4: segalign = SegmentAlign.align_page; break;
-                case 5: segalign = SegmentAlign.align_4;    break;
+                case 1: secalign = SectionAlign.align_1;    break;
+                case 2: secalign = SectionAlign.align_2;    break;
+                case 3: secalign = SectionAlign.align_16;   break;
+                case 4: secalign = SectionAlign.align_page; break;
+                case 5: secalign = SectionAlign.align_4;    break;
                 default:
                     enforce(false, "Invalid alignment value");
                     break;
@@ -157,16 +157,16 @@ public:
                 switch(C)
                 {
                 case 5:
-                    segalign = SegmentAlign.align_1;
+                    secalign = SectionAlign.align_1;
                 case 2, 4, 7:
                 case 0:
                     break;
                 default:
-                    enforce(false, "Segment combination not supported: " ~ to!string(C));
+                    enforce(false, "Section combination not supported: " ~ to!string(C));
                     break;
                 }
-                enforce(!B, "Big segments are not supported");
-                enforce(P, "Use16 segments are not supported");
+                enforce(!B, "Big sections are not supported");
+                enforce(P, "Use16 sections are not supported");
                 data = data[1..$];
                 uint length;
                 if (r.type == OmfRecordType.SEGDEF16)
@@ -178,34 +178,34 @@ public:
                     length = getDwordLE(data);
                 }
                 auto name = getIndex(data);
-                enforce(name <= names.length, "Invalid segment name index");
+                enforce(name <= names.length, "Invalid section name index");
                 auto cname = getIndex(data);
                 enforce(cname <= names.length, "Invalid class name index");
 
-                SegmentClass segclass;
+                SectionClass secclass;
                 switch(cast(string)names[cname-1])
                 {
-                case "CODE":   segclass = SegmentClass.Code;   break;
-                case "DATA":   segclass = SegmentClass.Data;   break;
-                case "CONST":  segclass = SegmentClass.Const;  break;
-                case "BSS":    segclass = SegmentClass.BSS;    break;
-                case "tls":    segclass = SegmentClass.TLS;    break;
-                case "ENDBSS": segclass = SegmentClass.ENDBSS; break;
-                case "STACK":  segclass = SegmentClass.STACK;  break;
-                case "DEBSYM": segclass = SegmentClass.DEBSYM;  break;
-                case "DEBTYP": segclass = SegmentClass.DEBSYM;  break;
+                case "CODE":   secclass = SectionClass.Code;   break;
+                case "DATA":   secclass = SectionClass.Data;   break;
+                case "CONST":  secclass = SectionClass.Const;  break;
+                case "BSS":    secclass = SectionClass.BSS;    break;
+                case "tls":    secclass = SectionClass.TLS;    break;
+                case "ENDBSS": secclass = SectionClass.ENDBSS; break;
+                case "STACK":  secclass = SectionClass.STACK;  break;
+                case "DEBSYM": secclass = SectionClass.DEBSYM;  break;
+                case "DEBTYP": secclass = SectionClass.DEBSYM;  break;
                 default:
-                    enforce(false, "Unknown segment class: " ~ cast(string)names[cname-1]);
+                    enforce(false, "Unknown section class: " ~ cast(string)names[cname-1]);
                     break;
                 }
 
                 auto overlayName = getIndex(data); // Discard
                 enforce(overlayName <= names.length, "Invalid overlay name index");
                 enforce(data.length == 0, "Corrupt SEGDEF record");
-                auto seg = new Segment(names[name-1], segclass, segalign, length);
-                segments ~= seg;
-                segtab.add(seg);
-                //writeln("SEGDEF (", segments.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length);
+                auto sec = new Section(names[name-1], secclass, secalign, length);
+                sections ~= sec;
+                sectab.add(sec);
+                //writeln("SEGDEF (", sections.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length);
                 break;
             case OmfRecordType.GRPDEF:
                 OmfGroup group;
@@ -217,9 +217,10 @@ public:
                     auto type = getByte(data);
                     enforce(type == 0xFF, "Only type FFH group components are supported");
                     auto index = getIndex(data);
-                    enforce(index <= segments.length, "Invalid group segment index");
+                    enforce(index <= sections.length, "Invalid group section index");
                     group.segs ~= index;
                 }
+                //enforce(cast(string)names[group.name-1] == "FLAT", "Only the FLAT group is supported, not " ~ cast(string)names[group.name-1]);
                 groups ~= group;
                 //writeln("GRPDEF name:", cast(string)names[group.name-1], " components:", group.segs);
                 enforce(data.length == 0, "Corrupt GRPDEF record");
@@ -231,19 +232,19 @@ public:
                 auto baseGroup = getIndex(data);
                 enforce(baseGroup <= groups.length, "Invalid base group index");
                 auto baseSeg = getIndex(data);
-                enforce(baseSeg <= segments.length, "Invalid base segment index");
+                enforce(baseSeg <= sections.length, "Invalid base section index");
                 if (baseSeg == 0)
                     auto baseFrame = getWordLE(data);
                 while (data.length)
                 {
                     auto group = baseGroup;
-                    auto seg = baseSeg;
+                    auto sec = baseSeg;
                     auto length = getByte(data);
                     auto name = getBytes(data, length);
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                     auto type = getIndex(data);
-                    symtab.add(new PublicSymbol(seg ? segments[seg-1] : null, name, offset));
-                    //writeln("PUBDEF name:", cast(string)name, " ", seg ? cast(string)segments[seg-1].name : "__abs__", "+", offset);
+                    symtab.add(new PublicSymbol(sec ? sections[sec-1] : null, name, offset));
+                    //writeln("PUBDEF name:", cast(string)name, " ", sec ? cast(string)sections[sec-1].name : "__abs__", "+", offset);
                 }
                 enforce(data.length == 0, "Corrupt PUBDEF record");
                 break;
@@ -274,35 +275,35 @@ public:
                     baseGroup = getIndex(data);
                     enforce(baseGroup <= groups.length, "Invalid base group index");
                     baseSeg = getIndex(data);
-                    enforce(baseSeg <= segments.length, "Invalid base segment index");
+                    enforce(baseSeg <= sections.length, "Invalid base section index");
                     if (baseSeg == 0)
                         auto baseFrame = getWordLE(data);
                 }
                 auto name = getIndex(data);
-                auto seg = segments[baseSeg-1];
-                SegmentAlign segalign;
+                auto sec = sections[baseSeg-1];
+                SectionAlign secalign;
                 switch(alignment)
                 {
-                case 0: segalign = seg.segalign;            break;
-                case 1: segalign = SegmentAlign.align_1;    break;
-                case 2: segalign = SegmentAlign.align_2;    break;
-                case 3: segalign = SegmentAlign.align_16;   break;
-                case 4: segalign = SegmentAlign.align_page; break;
-                case 5: segalign = SegmentAlign.align_4;    break;
+                case 0: secalign = sec.secalign;            break;
+                case 1: secalign = SectionAlign.align_1;    break;
+                case 2: secalign = SectionAlign.align_2;    break;
+                case 3: secalign = SectionAlign.align_16;   break;
+                case 4: secalign = SectionAlign.align_page; break;
+                case 5: secalign = SectionAlign.align_4;    break;
                 default:
                     enforce(false, "Invalid alignment value");
                     break;
                 }
                 auto length = data.length;
-                auto xseg = new Segment(seg.name ~ '$' ~ names[name-1], seg.segclass, segalign, length);
-                auto cseg = segtab.add(xseg);
+                auto xsec = new Section(sec.name ~ '$' ~ names[name-1], sec.secclass, secalign, length);
+                auto csec = sectab.add(xsec);
                 if (!(flags & 1))
                 {
-                    auto sym = new ComdatSymbol(xseg, cseg, names[name-1], offset, comdat, isLocal);
+                    auto sym = new ComdatSymbol(xsec, csec, names[name-1], offset, comdat, isLocal);
                     symtab.add(sym);
                 }
                 //writeln(flags, ' ', attributes, ' ', comdat);
-                //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)segments[baseSeg-1].name, isLocal ? " local" : "");
+                //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)sections[baseSeg-1].name, isLocal ? " local" : "");
                 break;
             case OmfRecordType.EXTDEF:
                 auto data = r.data;

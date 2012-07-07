@@ -6,8 +6,8 @@ import datafile;
 import objectfile;
 import omfdef;
 import omfobjectfile;
-import segment;
-import segmenttable;
+import section;
+import sectiontable;
 import symbol;
 import symboltable;
 import workqueue;
@@ -29,7 +29,7 @@ public:
         writeln("OMF Library file: ", f.filename);
         f.seek(0);
     }
-    override void loadSymbols(SymbolTable symtab, SegmentTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
+    override void loadSymbols(SymbolTable symtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
         writeln("OMF Library file: ", f.filename);
         //symtab.dumpUndefined();
@@ -91,7 +91,7 @@ public:
                     auto page = symbols[sym.name];
                     auto obj = new OmfObjectFile(new DataFile(f, page * pagesize));
                     //writeln("Pulling in object ", page, " due to undefined symbol: ", cast(string)sym.name);
-                    obj.loadSymbols(symtab, segtab, queue, objects);
+                    obj.loadSymbols(symtab, sectab, queue, objects);
                     progress = true;
                     break;
                 }

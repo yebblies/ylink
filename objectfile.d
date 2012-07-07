@@ -3,7 +3,7 @@ import datafile;
 import modules;
 import omflibraryfile;
 import omfobjectfile;
-import segmenttable;
+import sectiontable;
 import symboltable;
 import workqueue;
 
@@ -28,5 +28,5 @@ abstract class ObjectFile : Module
         }
     }
     abstract void dump();
-    abstract void loadSymbols(SymbolTable symtab, SegmentTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects);
+    abstract void loadSymbols(SymbolTable symtab, SectionTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects);
 }
