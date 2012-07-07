@@ -4,7 +4,6 @@ import std.exception;
 import std.stdio;
 
 import datafile;
-import segment;
 
 enum OmfRecordType
 {
