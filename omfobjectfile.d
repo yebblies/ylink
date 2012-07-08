@@ -217,14 +217,14 @@ public:
                 auto data = r.data;
                 auto baseGroup = getIndex(data);
                 enforce(baseGroup <= groups.length, "Invalid base group index");
-                auto baseSeg = getIndex(data);
-                enforce(baseSeg <= sections.length, "Invalid base section index");
-                if (baseSeg == 0)
+                auto baseSec = getIndex(data);
+                enforce(baseSec <= sections.length, "Invalid base section index");
+                if (baseSec == 0)
                     auto baseFrame = getWordLE(data);
                 while (data.length)
                 {
                     auto group = baseGroup;
-                    auto sec = baseSeg;
+                    auto sec = baseSec;
                     auto length = getByte(data);
                     auto name = getBytes(data, length);
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
@@ -255,18 +255,18 @@ public:
                 auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                 auto type = getIndex(data);
                 ushort baseGroup;
-                ushort baseSeg;
+                ushort baseSec;
                 if ((attributes & 0x0F) == 0x00)
                 {
                     baseGroup = getIndex(data);
                     enforce(baseGroup <= groups.length, "Invalid base group index");
-                    baseSeg = getIndex(data);
-                    enforce(baseSeg <= sections.length, "Invalid base section index");
-                    if (baseSeg == 0)
+                    baseSec = getIndex(data);
+                    enforce(baseSec <= sections.length, "Invalid base section index");
+                    if (baseSec == 0)
                         auto baseFrame = getWordLE(data);
                 }
                 auto name = getIndex(data);
-                auto sec = sections[baseSeg-1];
+                auto sec = sections[baseSec-1];
                 SectionAlign secalign;
                 switch(alignment)
                 {
@@ -289,7 +289,7 @@ public:
                     symtab.add(sym);
                 }
                 //writeln(flags, ' ', attributes, ' ', comdat);
-                //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)sections[baseSeg-1].name, isLocal ? " local" : "");
+                //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)sections[baseSec-1].name, isLocal ? " local" : "");
                 break;
             case OmfRecordType.EXTDEF:
                 auto data = r.data;
