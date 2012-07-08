@@ -39,7 +39,7 @@ final class PublicSymbol : Symbol
     }
     override void dump()
     {
-        writeln("Public: ", cleanString(name), " = ", sec ? cast(string)sec.name : "_abs_", " (", cast(void*)sec, ")", "+", offset, " (", refCount, ")");
+        writeln("Public: ", cleanString(name), " = ", sec ? cast(string)sec.fullname : "_abs_", " (", cast(void*)sec, ")", "+", offset, " (", refCount, ")");
     }
 }
 
@@ -72,7 +72,7 @@ final class ComdatSymbol : Symbol
     }
     override void dump()
     {
-        writeln("Comdat: ", cleanString(name), " = ", sec ? cast(string)sec.name : "_abs_", "+", offset, " (", comdat, ")", isLocal ? " Local" : "", " (", refCount, ")");
+        writeln("Comdat: ", cleanString(name), " = ", sec ? cast(string)sec.fullname : "_abs_", "+", offset, " (", comdat, ")", isLocal ? " Local" : "", " (", refCount, ")");
     }
 }
 

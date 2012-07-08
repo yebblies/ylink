@@ -59,11 +59,13 @@ void main(string[] args)
     }
     symtab.defineImports(sectab);
     symtab.defineSpecial(sectab);
+    symtab.checkUnresolved();
+    auto segments = sectab.allocateSegments(0x00400000, 0x1000);
     if (dump)
     {
         sectab.dump();
         symtab.dump();
+        foreach(seg; segments)
+            seg.dump();
     }
-    symtab.checkUnresolved();
-    auto segments = sectab.allocateSegments();
 }

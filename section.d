@@ -2,14 +2,16 @@
 import std.algorithm;
 import std.stdio;
 
+import segment;
+
 enum SectionClass
 {
     Code,
     Data,
-    BSS,
     Const,
-    TLS,
+    BSS,
     ENDBSS,
+    TLS,
     STACK,
     DEBSYM,
     DEBTYP,
@@ -29,14 +31,17 @@ enum SectionAlign
 final class CombinedSection
 {
     immutable(ubyte)[] name;
+    immutable(ubyte)[] tag;
     SectionClass secclass;
     Section[] members;
+    Segment seg;
     uint length;
     SectionAlign secalign = SectionAlign.align_1;
 
-    this(immutable(ubyte)[] name, SectionClass secclass)
+    this(immutable(ubyte)[] name, immutable(ubyte)[] tag, SectionClass secclass)
     {
         this.name = name;
+        this.tag = tag;
         this.secclass = secclass;
     }
     void append(Section sec)
@@ -50,13 +55,20 @@ final class CombinedSection
     }
     void dump()
     {
-        writeln("Section: ", cleanString(name), " (", secclass, ") ", length, " bytes align:", secalign);
+        writeln("Section: ", cleanString(name), cleanString(tag), " (", secclass, ") ", length, " bytes align:", secalign);
+    }
+    void setBase(uint base)
+    {
+        foreach(sec; members)
+            sec.offset += base;
     }
 }
 
 final class Section
 {
+    immutable(ubyte)[] fullname;
     immutable(ubyte)[] name;
+    immutable(ubyte)[] tag;
     SectionClass secclass;
     SectionAlign secalign;
     uint length;
@@ -65,7 +77,10 @@ final class Section
 
     this(immutable(ubyte)[] name, SectionClass secclass, SectionAlign secalign, uint length)
     {
-        this.name = name;
+        auto i = name.indexOf('$');
+        this.fullname = name;
+        this.name = i == -1 ? name : name[0..i];
+        this.tag = i == -1 ? null : name[i..$];
         this.secclass = secclass;
         this.secalign = secalign;
         this.length = length;
