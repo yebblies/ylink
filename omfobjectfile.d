@@ -418,7 +418,7 @@ public:
             case OmfRecordType.THEADR:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
-                //writeln("Module: ", cast(string)r.data[1..$]);
+                writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
@@ -451,30 +451,27 @@ public:
                 break;
             case OmfRecordType.FIXUPP16:
             case OmfRecordType.FIXUPP32:
-                //writeln("FIXUPP");
-                break;
-            case OmfRecordType.LINNUM:
-                writeln("LINNUM");
-                break;
-            case OmfRecordType.LINSYM:
-                writeln("LINSYM");
-                break;
-                /*while (data.length)
+                while (data.length)
                 {
                     if ((data[0] & 0x80) == 0)
                     {
+                        writeln("THREAD");
                         auto head = getByte(data);
                         auto index = getIndex(data);
                     }
                     else
                     {
-                        auto locat = getWordLE(data);
+                        auto locat = getWordBE(data);
+                        auto M = (locat & 0x4000) != 0;
+                        auto location = (locat & 0x3C00) >> 10;
+                        auto offset = (locat & 0x3FF);
                         auto fixdata = getByte(data);
                         auto F = (fixdata & 0x80) != 0;
                         auto frametype = (fixdata & 0x70) >> 4;
                         auto T = (fixdata & 0x08) != 0;
                         auto P = (fixdata & 0x04) != 0;
                         auto Targt = (fixdata & 0x03);
+                        auto targettype = (P << 2) | Targt;
                         ushort frame;
                         if (!F)
                             frame = getIndex(data);
@@ -484,9 +481,23 @@ public:
                         uint displacement;
                         if (P == 0)
                             displacement = getDwordLE(data);
+
+                        writeln("FIXUP M:", M, " location:", location, " offset:", offset, " F:", F, " frametype:", frametype);
+                        writeln("      T:", T, " P:", P, " Targt: ", Targt, " frame:", frame, " target:", target, " disp:", displacement);
+                        enforce(!F, "Frame threads are not supported");
+                        enforce(!T, "Target threads are not supported");
+                        enforce(frametype == 0 || frametype == 1 || frametype == 5);
+                        enforce(targettype == 0 || targettype == 2 || targettype == 4 || targettype == 6, "Group-relative targets are not supported");
+                        enforce(location == 9 || location == 10 || location == 11, "Only some weirdly selected and undocumented offset fixups are supported");
                     }
                 }
-                enforce(data.length == 0, "Corrupt FIXUPP record");*/
+                enforce(data.length == 0, "Corrupt FIXUPP record");
+                break;
+            case OmfRecordType.LINNUM:
+                writeln("LINNUM");
+                break;
+            case OmfRecordType.LINSYM:
+                writeln("LINSYM");
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
@@ -516,6 +527,8 @@ private:
             //enforce(sec.secclass != SectionClass.BSS, "Error: Data defined for uninitialized block");
             if (sec.secclass == SectionClass.BSS)
                 break;
+            if (sec.secclass == SectionClass.DEBSYM)
+                break;
             enforce(offset + data.length <= sec.length, "Data is too big for section");
             sec.data[offset..offset + data.length] = data[];
             //writeln("LEDATA ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
@@ -528,6 +541,8 @@ private:
             auto offset = off16 ? getWordLE(data) : getDwordLE(data);
             auto sec = sections[index-1];
             if (sec.secclass == SectionClass.BSS)
+                break;
+            if (sec.secclass == SectionClass.DEBSYM)
                 break;
             void readDataBlock(immutable(ubyte)[] data)
             {

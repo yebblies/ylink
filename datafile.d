@@ -73,6 +73,13 @@ ushort getWordLE(ref immutable(ubyte)[] d)
     return r;
 }
 
+ushort getWordBE(ref immutable(ubyte)[] d)
+{
+    ushort r = d[1] | (d[0] << 8);
+    d = d[2..$];
+    return r;
+}
+
 uint getDwordLE(ref immutable(ubyte)[] d)
 {
     uint r = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
