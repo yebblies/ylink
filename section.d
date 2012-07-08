@@ -10,7 +10,6 @@ enum SectionClass
     Data,
     Const,
     BSS,
-    ENDBSS,
     TLS,
     STACK,
     DEBSYM,

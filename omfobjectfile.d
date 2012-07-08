@@ -511,7 +511,7 @@ private:
         case "CONST":  secclass = Const;  break;
         case "BSS":    secclass = BSS;    break;
         case "tls":    secclass = TLS;    break;
-        case "ENDBSS": secclass = ENDBSS; break;
+        case "ENDBSS": secclass = BSS; break;
         case "STACK":  secclass = STACK;  break;
         case "DEBSYM": secclass = DEBSYM;  break;
         case "DEBTYP": secclass = DEBSYM;  break;

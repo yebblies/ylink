@@ -172,7 +172,7 @@ final class SymbolTable
     void defineSpecial(SectionTable sectab)
     {
         auto dataend = new Section(cast(immutable(ubyte)[])"__dataend", SectionClass.Data, SectionAlign.align_1, 0);
-        auto bssend = new Section(cast(immutable(ubyte)[])"__bssend", SectionClass.ENDBSS, SectionAlign.align_1, 0);
+        auto bssend = new Section(cast(immutable(ubyte)[])"__bssend", SectionClass.BSS, SectionAlign.align_1, 0);
         sectab.add(dataend);
         sectab.add(bssend);
         add(new PublicSymbol(dataend, cast(immutable(ubyte)[])"__edata", 0));

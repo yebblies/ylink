@@ -101,7 +101,6 @@ final class SectionTable
 
         auto BSS = new Segment(SegmentType.BSS, offset);
         segAppend(BSS, sections[SectionClass.BSS]);
-        segAppend(BSS, sections[SectionClass.ENDBSS]);
         offset = (offset + BSS.length + segAlign - 1) & ~(segAlign - 1);
 
         segs[SegmentType.Import] = Import;
