@@ -408,9 +408,11 @@ public:
     {
         f.seek(0);
         auto modend = false;
+        OmfRecord lastdata;
         while (!f.empty() && !modend)
         {
             auto r = loadRecord();
+            auto data = r.data;
             switch(r.type)
             {
             case OmfRecordType.THEADR:
@@ -441,15 +443,15 @@ public:
                 break;
             case OmfRecordType.LEDATA16:
             case OmfRecordType.LEDATA32:
-                writeln("LEDATA");
-                break;
             case OmfRecordType.LIDATA16:
             case OmfRecordType.LIDATA32:
-                writeln("LIDATA");
+                if (lastdata.type)
+                    writeRecord(lastdata);
+                lastdata = r;
                 break;
             case OmfRecordType.FIXUPP16:
             case OmfRecordType.FIXUPP32:
-                writeln("FIXUPP");
+                //writeln("FIXUPP");
                 break;
             case OmfRecordType.LINNUM:
                 writeln("LINNUM");
@@ -457,8 +459,7 @@ public:
             case OmfRecordType.LINSYM:
                 writeln("LINSYM");
                 break;
-                /*auto data = r.data;
-                while (data.length)
+                /*while (data.length)
                 {
                     if ((data[0] & 0x80) == 0)
                     {
@@ -490,6 +491,8 @@ public:
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
                 modend = true;
+                if (lastdata.type)
+                    writeRecord(lastdata);
                 break;
             default:
                 enforce(false, "Unsupported record type: " ~ to!string(r.type));
@@ -498,6 +501,62 @@ public:
         }
     }
 private:
+    void writeRecord(OmfRecord r)
+    {
+        auto data = r.data;
+        switch (r.type)
+        {
+        case OmfRecordType.LEDATA16:
+        case OmfRecordType.LEDATA32:
+            auto off16 = (r.type == OmfRecordType.LEDATA16);
+            auto index = getIndex(data);
+            enforce(index <= sections.length, "Invalid section index");
+            auto offset = off16 ? getWordLE(data) : getDwordLE(data);
+            auto sec = sections[index-1];
+            //enforce(sec.secclass != SectionClass.BSS, "Error: Data defined for uninitialized block");
+            if (sec.secclass == SectionClass.BSS)
+                break;
+            enforce(offset + data.length <= sec.length, "Data is too big for section");
+            sec.data[offset..offset + data.length] = data[];
+            //writeln("LEDATA ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
+            break;
+        case OmfRecordType.LIDATA16:
+        case OmfRecordType.LIDATA32:
+            auto off16 = (r.type == OmfRecordType.LIDATA16);
+            auto index = getIndex(data);
+            enforce(index <= sections.length, "Invalid section index");
+            auto offset = off16 ? getWordLE(data) : getDwordLE(data);
+            auto sec = sections[index-1];
+            if (sec.secclass == SectionClass.BSS)
+                break;
+            void readDataBlock(immutable(ubyte)[] data)
+            {
+                auto repCount = off16 ? getWordLE(data) : getDwordLE(data);
+                auto blockCount = getWordLE(data);
+                immutable(ubyte)[] repdata;
+                if (!blockCount)
+                {
+                    repdata = getString(data);
+                    foreach(i; 0..repCount)
+                    {
+                        sec.data[offset..offset + repdata.length] = repdata;
+                        offset += repdata.length;
+                    }
+                    //writeln("LIDATA ", repdata, " * ", repCount);
+                }
+                else
+                {
+                    foreach(i; 0..repCount)
+                        readDataBlock(data);
+                }
+            }
+            readDataBlock(data);
+            //writeln("LIDATA ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
+            break;
+        default:
+            assert(0);
+        }
+    }
     OmfRecord loadRecord()
     {
         OmfRecord r;
@@ -575,10 +634,10 @@ private:
         case "CONST":  secclass = Const;  break;
         case "BSS":    secclass = BSS;    break;
         case "tls":    secclass = TLS;    break;
-        case "ENDBSS": secclass = BSS; break;
+        case "ENDBSS": secclass = BSS;    break;
         case "STACK":  secclass = STACK;  break;
-        case "DEBSYM": secclass = DEBSYM;  break;
-        case "DEBTYP": secclass = DEBSYM;  break;
+        case "DEBSYM": secclass = DEBSYM; break;
+        case "DEBTYP": secclass = DEBSYM; break;
         default:
             enforce(false, "Unknown section class: " ~ cast(string)name);
             break;
