@@ -99,6 +99,10 @@ public:
         }
         while (progress && symtab.hasUndefined());
     }
+    override void loadData()
+    {
+        assert(0, "Libraries can't be loaded like this");
+    }
 private:
     OmfRecord loadRecord()
     {

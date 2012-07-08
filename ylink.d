@@ -68,4 +68,9 @@ void main(string[] args)
         foreach(seg; segments)
             seg.dump();
     }
+    while (!objects.empty())
+    {
+        auto object = objects.pop();
+        object.loadData();
+    }
 }

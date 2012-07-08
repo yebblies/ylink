@@ -352,40 +352,10 @@ public:
             case OmfRecordType.LIDATA16:
             case OmfRecordType.LIDATA32:
             case OmfRecordType.FIXUPP16:
+            case OmfRecordType.FIXUPP32:
             case OmfRecordType.LINNUM:
             case OmfRecordType.LINSYM:
                 // Data definitions are skipped in the first pass
-                break;
-            case OmfRecordType.FIXUPP32:
-                /*auto data = r.data;
-                while (data.length)
-                {
-                    if ((data[0] & 0x80) == 0)
-                    {
-                        auto head = getByte(data);
-                        auto index = getIndex(data);
-                    }
-                    else
-                    {
-                        auto locat = getWordLE(data);
-                        auto fixdata = getByte(data);
-                        auto F = (fixdata & 0x80) != 0;
-                        auto frametype = (fixdata & 0x70) >> 4;
-                        auto T = (fixdata & 0x08) != 0;
-                        auto P = (fixdata & 0x04) != 0;
-                        auto Targt = (fixdata & 0x03);
-                        ushort frame;
-                        if (!F)
-                            frame = getIndex(data);
-                        ushort target;
-                        if (!T)
-                            target = getIndex(data);
-                        uint displacement;
-                        if (P == 0)
-                            displacement = getDwordLE(data);
-                    }
-                }
-                enforce(data.length == 0, "Corrupt FIXUPP record");*/
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
@@ -419,6 +389,7 @@ public:
                     enforce(frametype == 1);
                     enforce(Targt == 2);
                     enforce(frame == 1, "Only FLAT group is supported");
+                    enforce(displacement == 0, "Displacement is not supported for the start address");
                     //writeln(target, ' ', displacement);
                     //writeln(cast(string)externs[target].name);
                     symtab.setEntry(externs[target]);
@@ -432,6 +403,99 @@ public:
             }
         }
         symtab.merge();
+    }
+    override void loadData()
+    {
+        f.seek(0);
+        auto modend = false;
+        while (!f.empty() && !modend)
+        {
+            auto r = loadRecord();
+            switch(r.type)
+            {
+            case OmfRecordType.THEADR:
+                auto len = r.data[0];
+                enforce(len == r.data.length - 1, "Corrupt THEADR record");
+                //writeln("Module: ", cast(string)r.data[1..$]);
+                break;
+            case OmfRecordType.LLNAMES:
+            case OmfRecordType.LNAMES:
+            case OmfRecordType.COMENT:
+            case OmfRecordType.SEGDEF16:
+            case OmfRecordType.SEGDEF32:
+            case OmfRecordType.GRPDEF:
+            case OmfRecordType.PUBDEF16:
+            case OmfRecordType.PUBDEF32:
+            case OmfRecordType.COMDAT16:
+            case OmfRecordType.COMDAT32:
+            case OmfRecordType.EXTDEF:
+            case OmfRecordType.CEXTDEF:
+            case OmfRecordType.COMDEF:
+                // Pass 1 records are skipped
+                break;
+            case OmfRecordType.ALIAS:
+            case OmfRecordType.LPUBDEF:
+            case OmfRecordType.LCOMDEF:
+            case OmfRecordType.LEXTDEF:
+                enforce(false, "Record type " ~ to!string(r.type) ~ " not implemented");
+                break;
+            case OmfRecordType.LEDATA16:
+            case OmfRecordType.LEDATA32:
+                writeln("LEDATA");
+                break;
+            case OmfRecordType.LIDATA16:
+            case OmfRecordType.LIDATA32:
+                writeln("LIDATA");
+                break;
+            case OmfRecordType.FIXUPP16:
+            case OmfRecordType.FIXUPP32:
+                writeln("FIXUPP");
+                break;
+            case OmfRecordType.LINNUM:
+                writeln("LINNUM");
+                break;
+            case OmfRecordType.LINSYM:
+                writeln("LINSYM");
+                break;
+                /*auto data = r.data;
+                while (data.length)
+                {
+                    if ((data[0] & 0x80) == 0)
+                    {
+                        auto head = getByte(data);
+                        auto index = getIndex(data);
+                    }
+                    else
+                    {
+                        auto locat = getWordLE(data);
+                        auto fixdata = getByte(data);
+                        auto F = (fixdata & 0x80) != 0;
+                        auto frametype = (fixdata & 0x70) >> 4;
+                        auto T = (fixdata & 0x08) != 0;
+                        auto P = (fixdata & 0x04) != 0;
+                        auto Targt = (fixdata & 0x03);
+                        ushort frame;
+                        if (!F)
+                            frame = getIndex(data);
+                        ushort target;
+                        if (!T)
+                            target = getIndex(data);
+                        uint displacement;
+                        if (P == 0)
+                            displacement = getDwordLE(data);
+                    }
+                }
+                enforce(data.length == 0, "Corrupt FIXUPP record");*/
+                break;
+            case OmfRecordType.MODEND16:
+            case OmfRecordType.MODEND32:
+                modend = true;
+                break;
+            default:
+                enforce(false, "Unsupported record type: " ~ to!string(r.type));
+                break;
+            }
+        }
     }
 private:
     OmfRecord loadRecord()
