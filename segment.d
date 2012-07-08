@@ -23,6 +23,7 @@ final class Segment
     uint base;
     uint length;
     CombinedSection[] members;
+    ubyte[] data;
 
     this(SegmentType type, uint base)
     {
@@ -33,8 +34,17 @@ final class Segment
     {
         members ~= sec;
         sec.seg = this;
-        sec.setBase(length);
+        sec.setBase(base + length);
         length += sec.length;
+    }
+    void allocate(uint segAlign)
+    {
+        data.length = (length + segAlign - 1) & ~(segAlign - 1);
+        foreach(sec; members)
+        {
+            auto rbase = sec.base-base;
+            sec.allocate(data[rbase..rbase+sec.length]);
+        }
     }
     void dump()
     {

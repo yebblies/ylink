@@ -73,7 +73,7 @@ final class SectionTable
     {
         //Import,Export,Text,TLS,Data,Const,BSS,Reloc,Debug,
         Segment[SegmentType] segs;
-        auto offset = baseAddress + 0x1000; // OPTLINK uses this address, I don't know why
+        auto offset = baseAddress + 0x1000;
 
         auto Import = new Segment(SegmentType.Import, offset);
         segAppend(Import, sections[SectionClass.IData]);
@@ -102,6 +102,13 @@ final class SectionTable
         auto BSS = new Segment(SegmentType.BSS, offset);
         segAppend(BSS, sections[SectionClass.BSS]);
         offset = (offset + BSS.length + segAlign - 1) & ~(segAlign - 1);
+
+        Import.allocate(segAlign);
+        //Export.allocate(segAlign);
+        Text.allocate(segAlign);
+        TLS.allocate(segAlign);
+        Data.allocate(segAlign);
+        Const.allocate(segAlign);
 
         segs[SegmentType.Import] = Import;
         //segs[SegmentType.Export] = Export;

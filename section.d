@@ -34,6 +34,7 @@ final class CombinedSection
     SectionClass secclass;
     Section[] members;
     Segment seg;
+    uint base;
     uint length;
     SectionAlign secalign = SectionAlign.align_1;
 
@@ -47,7 +48,7 @@ final class CombinedSection
     {
         secalign = max(secalign, sec.secalign);
         length = (length + sec.secalign - 1) & ~cast(uint)(sec.secalign - 1);
-        sec.offset = length;
+        sec.base = length;
         length += sec.length;
         members ~= sec;
         sec.container = this;
@@ -58,8 +59,17 @@ final class CombinedSection
     }
     void setBase(uint base)
     {
+        this.base = base;
         foreach(sec; members)
-            sec.offset += base;
+            sec.base += base;
+    }
+    void allocate(ubyte[] data)
+    {
+        foreach(sec; members)
+        {
+            auto rbase = sec.base-base;
+            sec.data = data[rbase..rbase+sec.length];
+        }
     }
 }
 
@@ -70,9 +80,10 @@ final class Section
     immutable(ubyte)[] tag;
     SectionClass secclass;
     SectionAlign secalign;
+    uint base;
     uint length;
-    uint offset;
     CombinedSection container;
+    ubyte[] data;
 
     this(immutable(ubyte)[] name, SectionClass secclass, SectionAlign secalign, uint length)
     {
@@ -82,7 +93,7 @@ final class Section
         this.tag = i == -1 ? null : name[i..$];
         this.secclass = secclass;
         this.secalign = secalign;
-        this.length = length;
+        this.length = (length + secalign - 1) & ~(secalign - 1);
     }
 }
 

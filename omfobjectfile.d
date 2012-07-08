@@ -22,6 +22,11 @@ final class OmfObjectFile : ObjectFile
 {
 private:
     DataFile f;
+    immutable(ubyte)[] sourcefile;
+    immutable(ubyte)[][] names;
+    Section[] sections;
+    OmfGroup[] groups;
+    immutable(ubyte)[][] externs;
 public:
     this(DataFile f)
     {
@@ -41,11 +46,6 @@ public:
     override void loadSymbols(SymbolTable symtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
         //writeln("OMF Object file: ", f.filename);
-        immutable(ubyte)[] sourcefile;
-        immutable(ubyte)[][] names;
-        Section[] sections;
-        OmfGroup[] groups;
-        immutable(ubyte)[][] externs;
 
         symtab = new SymbolTable(symtab);
         objects.append(this);
