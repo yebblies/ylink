@@ -27,6 +27,7 @@ private:
     Section[] sections;
     OmfGroup[] groups;
     immutable(ubyte)[][] externs;
+    SymbolTable symtab;
 public:
     this(DataFile f)
     {
@@ -43,11 +44,11 @@ public:
             r.dump();
         }
     }
-    override void loadSymbols(SymbolTable symtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
+    override void loadSymbols(SymbolTable xsymtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
         //writeln("OMF Object file: ", f.filename);
 
-        symtab = new SymbolTable(symtab);
+        symtab = new SymbolTable(xsymtab);
         objects.append(this);
         f.seek(0);
         enforce(f.peekByte() == 0x80, "First record must be THEADR");
@@ -229,7 +230,12 @@ public:
                     auto name = getBytes(data, length);
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                     auto type = getIndex(data);
-                    symtab.add(new PublicSymbol(sec ? sections[sec-1] : null, name, offset));
+                    if (sec)
+                    {
+                        symtab.add(new PublicSymbol(sections[sec-1], name, offset));
+                    } else {
+                        symtab.add(new AbsoluteSymbol(name, offset));
+                    }
                     //writeln("PUBDEF name:", cast(string)name, " ", sec ? cast(string)sections[sec-1].name : "__abs__", "+", offset);
                 }
                 enforce(data.length == 0, "Corrupt PUBDEF record");
@@ -319,6 +325,7 @@ public:
                     auto type = getIndex(data);
                     auto sym = new ExternSymbol(names[name-1]);
                     symtab.add(sym);
+                    externs ~= names[name-1];
                     //writeln("CEXTDEF name:", cast(string)names[name-1]);
                 }
                 enforce(data.length == 0, "Corrupt CEXTDEF record");
@@ -337,6 +344,7 @@ public:
 
                     auto sym = new ComdefSymbol(name, length);
                     symtab.add(sym);
+                    externs ~= name;
                     //writeln("COMDEF name:", cast(string)name);
                 }
                 enforce(data.length == 0, "Corrupt COMDEF record");
@@ -391,8 +399,8 @@ public:
                     enforce(frame == 1, "Only FLAT group is supported");
                     enforce(displacement == 0, "Displacement is not supported for the start address");
                     //writeln(target, ' ', displacement);
-                    //writeln(cast(string)externs[target].name);
-                    symtab.setEntry(externs[target]);
+                    //writeln(cast(string)externs[target-1]);
+                    symtab.setEntry(externs[target-1]);
                 }
                 enforce(data.length == 0, "Corrupt MODEND record");
                 modend = true;
@@ -402,6 +410,7 @@ public:
                 break;
             }
         }
+        symtab.checkUnresolved();
         symtab.merge();
     }
     override void loadData()
@@ -471,9 +480,8 @@ public:
                         auto T = (fixdata & 0x08) != 0;
                         auto P = (fixdata & 0x04) != 0;
                         auto Targt = (fixdata & 0x03);
-                        auto targettype = (P << 2) | Targt;
                         ushort frame;
-                        if (!F)
+                        if (!F && (frametype == 0 || frametype == 1 || frametype == 2))
                             frame = getIndex(data);
                         ushort target;
                         if (!T)
@@ -482,13 +490,60 @@ public:
                         if (P == 0)
                             displacement = getDwordLE(data);
 
-                        writeln("FIXUP M:", M, " location:", location, " offset:", offset, " F:", F, " frametype:", frametype);
-                        writeln("      T:", T, " P:", P, " Targt: ", Targt, " frame:", frame, " target:", target, " disp:", displacement);
+                        //writeln("FIXUP M:", M, " location:", location, " offset:", offset, " F:", F, " frametype:", frametype);
+                        //writeln("      T:", T, " P:", P, " Targt: ", Targt, " frame:", frame, " target:", target, " disp:", displacement);
                         enforce(!F, "Frame threads are not supported");
                         enforce(!T, "Target threads are not supported");
-                        enforce(frametype == 0 || frametype == 1 || frametype == 5);
-                        enforce(targettype == 0 || targettype == 2 || targettype == 4 || targettype == 6, "Group-relative targets are not supported");
-                        enforce(location == 9 || location == 10 || location == 11, "Only some weirdly selected and undocumented offset fixups are supported");
+                        //writeln("F", frametype, " T", (P << 2) | Targt);
+                        uint targetAddress;
+                        writeln(location, ' ', displacement, ' ', offset);
+                        switch(Targt)
+                        {
+                        case 0:
+                            writeln("FIXUP target Segment relative (", cast(string)sections[target-1].name, ")");
+                            auto targetSec = sections[target-1];
+                            targetAddress = targetSec.base + offset;
+                            break;
+                        case 2:
+                            //writeln(externs.length, ' ', target);
+                            //writeln(cast(string[])externs);
+                            writeln("FIXUP target Extern relative (", cast(string)externs[target-1], ")");
+                            auto extname = externs[target-1];
+                            auto sym = symtab.deepSearch(extname);
+                            assert(sym, cast(string)extname);
+                            targetAddress = sym.getAddress();
+                            break;
+                        default:
+                            enforce(false, "Group-relative targets are not supported");
+                            break;
+                        }
+                        switch(frametype)
+                        {
+                        case 0:
+                            writeln("FIXUP frame  Segment relative (", cast(string)sections[frame-1].name, ")");
+                            break;
+                        case 1:
+                            writeln("FIXUP frame  Group relative (", cast(string)names[groups[frame-1].name-1], ")");
+                            enforce(names[groups[frame-1].name-1] == "FLAT");
+                            break;
+                        case 5:
+                            writeln("FIXUP frame  Target X relative");
+                            break;
+                        default:
+                            assert(0);
+                        }
+                        switch(location)
+                        {
+                        case 9: // 32-bit offset
+                            break;
+                        case 10: // tls offset?
+                            break;
+                        case 11: // seg-offset
+                            break;
+                        default:
+                            enforce(false, "Only some weirdly selected and undocumented offset fixups are supported");
+                            break;
+                        }
                     }
                 }
                 enforce(data.length == 0, "Corrupt FIXUPP record");

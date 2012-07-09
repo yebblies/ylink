@@ -16,6 +16,7 @@ final class SymbolTable
     Symbol[] undefined;
     immutable(ubyte)[] entryPoint;
     ImportSymbol[][immutable(ubyte)[]] imports;
+    Symbol[] hiddenSyms;
 
     this(SymbolTable parent)
     {
@@ -25,6 +26,12 @@ final class SymbolTable
     {
         auto p = name in symbols;
         return p ? *p : null;
+    }
+    Symbol deepSearch(immutable(ubyte)[] name)
+    {
+        assert(parent);
+        auto p = name in symbols;
+        return (p && *p && !cast(ExternSymbol)*p) ? *p : parent.searchName(name);
     }
     void setEntry(immutable(ubyte)[] name)
     {
@@ -36,7 +43,7 @@ final class SymbolTable
             entryPoint = name;
         }
     }
-    void add(Symbol sym)
+    Symbol add(Symbol sym)
     {
         if (auto p = sym.name in symbols)
         {
@@ -90,6 +97,7 @@ final class SymbolTable
             {
                 enforce(false, "Multiple definitions of symbol " ~ cast(string)sym.name);
             }
+            return *p;
         }
         else
         {
@@ -98,6 +106,7 @@ final class SymbolTable
                 undefined ~= sym;
             if (auto imp = cast(ImportSymbol)sym)
                 imports[imp.modname] ~= imp;
+            return sym;
         }
     }
     bool hasUndefined()
@@ -119,20 +128,35 @@ final class SymbolTable
     void merge()
     {
         assert(parent);
-        foreach(sym; symbols)
+        foreach(ref sym; symbols)
+        {
             if (!sym.isLocal)
+            {
                 parent.add(sym);
+                sym = null;
+            }
+            else
+                parent.addHidden(sym);
+        }
+    }
+    void addHidden(Symbol sym)
+    {
+        assert(sym.isLocal);
+        hiddenSyms ~= sym;
     }
     void checkUnresolved()
     {
         size_t undefcount;
         foreach(s; undefined)
         {
-            writeln("Error: No definition for symbol: ", cast(string)s.name);
-            undefcount++;
+            if (!parent || s.isLocal)
+            {
+                writeln("Error: No definition for symbol: ", cast(string)s.name);
+                undefcount++;
+            }
         }
         enforce(undefcount == 0, "Error: " ~ to!string(undefcount) ~ " unresolved symbols found");
-        enforce(entryPoint.length, "Error: No entry point defined");
+        enforce(parent || entryPoint.length, "Error: No entry point defined");
     }
     void defineImports(SectionTable sectab)
     {
@@ -160,6 +184,8 @@ final class SymbolTable
             foreach(sym; syms)
             {
                 auto s = new PublicSymbol(sec, cast(immutable(ubyte)[])"__imp_" ~ sym.name, offset);
+                sym.sec = sec;
+                sym.offset = offset;
                 offset += importEntrySize;
                 this.add(s);
             }
@@ -177,6 +203,25 @@ final class SymbolTable
         sectab.add(bssend);
         add(new PublicSymbol(dataend, cast(immutable(ubyte)[])"__edata", 0));
         add(new PublicSymbol(bssend, cast(immutable(ubyte)[])"__end", 0));
+    }
+    void allocateComdef(SectionTable sectab)
+    {
+        foreach(sym; symbols)
+        {
+            if (auto s = cast(ComdefSymbol)sym)
+            {
+                auto sec = new Section(cast(immutable(ubyte)[])"_DATA$" ~ s.name, SectionClass.Data, SectionAlign.align_1, s.size);
+                s.sec = sec;
+            }
+        }
+        foreach(sym; hiddenSyms)
+        {
+            if (auto s = cast(ComdefSymbol)sym)
+            {
+                auto sec = new Section(cast(immutable(ubyte)[])"_DATA$" ~ s.name, SectionClass.Data, SectionAlign.align_1, s.size);
+                s.sec = sec;
+            }
+        }
     }
 private:
     void removeUndefined(Symbol s)

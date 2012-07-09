@@ -25,6 +25,7 @@ abstract class Symbol
         this.isLocal = isLocal;
     }
     abstract void dump();
+    abstract uint getAddress();
 }
 
 final class PublicSymbol : Symbol
@@ -41,11 +42,33 @@ final class PublicSymbol : Symbol
     {
         writeln("Public: ", cleanString(name), " = ", sec ? cast(string)sec.fullname : "_abs_", " (", cast(void*)sec, ")", "+", offset, " (", refCount, ")");
     }
+    override uint getAddress()
+    {
+        assert(sec);
+        return sec.base + offset;
+    }
+}
+
+final class AbsoluteSymbol : Symbol
+{
+    uint offset;
+    this(immutable(ubyte)[] name, uint offset)
+    {
+        super(name, 0);
+        this.offset = offset;
+    }
+    override void dump()
+    {
+        writeln("Absolute: ", cleanString(name), " = ", offset);
+    }
+    override uint getAddress()
+    {
+        return offset;
+    }
 }
 
 final class ExternSymbol : Symbol
 {
-    Symbol sym;
     this(immutable(ubyte)[] name)
     {
         super(name, 1);
@@ -53,6 +76,10 @@ final class ExternSymbol : Symbol
     override void dump()
     {
         writeln("Extern: ", cleanString(name), " (", refCount, ")");
+    }
+    override uint getAddress()
+    {
+        assert(0);
     }
 }
 
@@ -74,10 +101,16 @@ final class ComdatSymbol : Symbol
     {
         writeln("Comdat: ", cleanString(name), " = ", sec ? cast(string)sec.fullname : "_abs_", "+", offset, " (", comdat, ")", isLocal ? " Local" : "", " (", refCount, ")");
     }
+    override uint getAddress()
+    {
+        assert(csec);
+        return csec.base + offset;
+    }
 }
 
 final class ComdefSymbol : Symbol
 {
+    Section sec;
     uint size;
     this(immutable(ubyte)[] name, uint size)
     {
@@ -88,6 +121,12 @@ final class ComdefSymbol : Symbol
     {
         writeln("Comdef: ", cleanString(name), " (", size, ")", " (", refCount, ")");
     }
+    override uint getAddress()
+    {
+        dump();
+        assert(sec, cleanString(name));
+        return sec.base;
+    }
 }
 
 final class ImportSymbol : Symbol
@@ -95,6 +134,8 @@ final class ImportSymbol : Symbol
     immutable(ubyte)[] modname;
     ushort expOrd;
     immutable(ubyte)[] expName;
+    Section sec;
+    uint offset;
     this(immutable(ubyte)[] modname, ushort expOrd, immutable(ubyte)[] intName, immutable(ubyte)[] expName)
     {
         super(intName, 0);
@@ -105,6 +146,11 @@ final class ImportSymbol : Symbol
     override void dump()
     {
         writeln("Import: ", cleanString(name), " = ", cast(string)modname, ":", expName.length ? cast(string)expName : to!string(expOrd), " (", refCount, ")");
+    }
+    override uint getAddress()
+    {
+        assert(sec);
+        return sec.base + offset;
     }
 }
 
