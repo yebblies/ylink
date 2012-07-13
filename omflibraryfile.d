@@ -99,7 +99,7 @@ public:
         }
         while (progress && symtab.hasUndefined());
     }
-    override void loadData()
+    override void loadData(uint tlsBase)
     {
         assert(0, "Libraries can't be loaded like this");
     }

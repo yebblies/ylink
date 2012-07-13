@@ -443,7 +443,7 @@ public:
         symtab.checkUnresolved();
         symtab.merge();
     }
-    override void loadData()
+    override void loadData(uint tlsBase)
     {
         f.seek(0);
         auto modend = false;
@@ -576,7 +576,7 @@ public:
                         if (P == 0)
                             displacement = getDwordLE(data);
 
-                        //writeln("FIXUP M:", M, " location:", location, " offset:", offset, " F:", F, " frametype:", frametype);
+                        writeln("FIXUP M:", M, " location:", location, " offset:", offset, " F:", F, " frametype:", frametype);
                         //writeln("      T:", T, " P:", P, " Targt: ", Targt, " frame:", frame, " target:", target, " disp:", displacement);
                         enforce(!F, "Frame threads are not supported");
                         enforce(!T, "Target threads are not supported");
@@ -626,19 +626,30 @@ public:
                         default:
                             assert(0);
                         }
+                        if (!M)
+                        {
+                            // self-relative
+                            enforce(baseAddress == 0);
+                            baseAddress = defSection.base + offset;
+                        }
+                        // Warning: incoming casts: we know defData is unique
+                        auto xdata = cast()defData;
                         switch(location)
                         {
                         case 9: // 32-bit offset
                             writefln("### FIXUP 32b (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
-                            enforce(offset + 4 <= defData.length);
+                            enforce(offset + 4 <= xdata.length);
+                            (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - baseAddress;
                             break;
                         case 10: // tls offset?
-                            writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
-                            enforce(offset + 4 <= defData.length);
+                            writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, tlsBase, targetBase, displacement);
+                            enforce(offset + 4 <= xdata.length);
+                            (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - tlsBase;
                             break;
                         case 11: // seg-offset
+                            assert(0);
                             writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
-                            enforce(offset + 5 <= defData.length);
+                            enforce(offset + 5 <= xdata.length);
                             break;
                         default:
                             enforce(false, "Only some weirdly selected and undocumented offset fixups are supported");
@@ -712,8 +723,9 @@ private:
             }
             readDataBlock(data);
         } else {
-            //writeln(cast(string)sec.fullname);
-            //writeln(offset, ' ', data.length, ' ', sec.length);
+            writeln(cast(string)sec.fullname);
+            writeln(offset, ' ', data.length, ' ', sec.length);
+            writeBytes(data);
             enforce(offset + data.length <= sec.length, "Data is too big for section");
             sec.data[offset..offset + data.length] = data[];
         }
@@ -805,4 +817,12 @@ private:
         }
         return secclass;
     }
+}
+
+void writeBytes(in ubyte[] data)
+{
+    write("[");
+    foreach(v; data)
+        writef("%.2X ", v);
+    writeln("]");
 }

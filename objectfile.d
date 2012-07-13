@@ -29,5 +29,5 @@ abstract class ObjectFile : Module
     }
     abstract void dump();
     abstract void loadSymbols(SymbolTable symtab, SectionTable segtab, WorkQueue!string queue, WorkQueue!ObjectFile objects);
-    abstract void loadData();
+    abstract void loadData(uint tlsBase);
 }

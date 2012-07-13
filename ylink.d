@@ -9,6 +9,7 @@ import omfobjectfile;
 import paths;
 import relocation;
 import sectiontable;
+import segment;
 import symboltable;
 import workqueue;
 
@@ -72,7 +73,7 @@ void main(string[] args)
     while (!objects.empty())
     {
         auto object = objects.pop();
-        object.loadData();
+        object.loadData(segments[SegmentType.TLS].base);
     }
     writeln("Success!");
 }

@@ -21,6 +21,8 @@ int main()
     static uint static_tls = 0x89898989;
     global_shared = global_tls + static_shared + static_tls;
     func();
+    main();
+    auto x = &main;
     auto a = 1;
     auto b = a + 1;
     auto c = a + b + 1;
