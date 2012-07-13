@@ -192,7 +192,7 @@ public:
                 auto sec = new Section(names[name-1], secclass, secalign, length);
                 sections ~= sec;
                 sectab.add(sec);
-                //writeln("SEGDEF (", sections.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length);
+                //writeln("SEGDEF (", sections.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length, " align:", secalign);
                 break;
             case OmfRecordType.GRPDEF:
                 OmfGroup group;
@@ -242,9 +242,10 @@ public:
                 break;
             case OmfRecordType.COMDAT16:
             case OmfRecordType.COMDAT32:
-                auto off16 = (r.type == OmfRecordType.PUBDEF16);
+                auto off16 = (r.type == OmfRecordType.COMDAT16);
                 auto data = r.data;
                 auto flags = getByte(data);
+                auto isIterated = (flags & 0x2) != 0;
                 auto isLocal = (flags & 0x4) != 0;
                 enforce(flags < 8, "COMDAT flag not supported: " ~ to!string(flags));
                 auto attributes = getByte(data);
@@ -270,7 +271,8 @@ public:
                     enforce(baseSec <= sections.length, "Invalid base section index");
                     if (baseSec == 0)
                         auto baseFrame = getWordLE(data);
-                }
+                } else
+                    assert(0);
                 auto name = getIndex(data);
                 auto sec = sections[baseSec-1];
                 SectionAlign secalign;
@@ -286,13 +288,41 @@ public:
                     enforce(false, "Invalid alignment value");
                     break;
                 }
-                auto length = data.length;
-                auto xsec = new Section(sec.name ~ '$' ~ names[name-1], sec.secclass, secalign, length);
-                auto csec = sectab.add(xsec);
-                if (!(flags & 1))
+                //auto length = data.length;
+                //auto xsec = new Section(sec.name ~ '$' ~ names[name-1], sec.secclass, secalign, length);
+                //auto csec = sectab.add(xsec);
+                if (flags & 1)
                 {
-                    auto sym = new ComdatSymbol(xsec, csec, names[name-1], offset, comdat, isLocal);
+                    //writeln("Continue comdat ", cast(string)(sec.name ~ '$' ~ names[name-1]), " length:", data.length);
+                    /*foreach(v; data)
+                        writef("%.2X ", v);
+                    writeln();*/
+                    // Modify previous section
+                    auto sym = symtab.searchName(names[name-1]);
+                    assert(sym);
+                    assert(cast(ComdatSymbol)sym);
+                    auto csec = (cast(ComdatSymbol)sym).sec;
+                    enforce(!isIterated);
+                    //writeln(offset, "..", offset + data.length, "  ", csec.length);
+                    //enforce(offset == csec.length, "Overlapping or gapped comdats are not supported");
+                    auto p = csec.container;
+                    //enforce(offset == p.length, "Overlapping or gapped comdats are not supported");
+                    enforce(p.members.length == 1);
+                    enforce(p.length == csec.length);
+                    csec.length = max(offset + data.length, csec.length);
+                    p.length = csec.length;
+                }
+                else
+                {
+                    enforce(offset == 0);
+                    auto csec = new Section(sec.name ~ '$' ~ names[name-1], sec.secclass, sec.secalign, data.length);
+                    sectab.add(csec);
+                    auto sym = new ComdatSymbol(csec, names[name-1], offset, comdat, isLocal);
                     symtab.add(sym);
+                    //writeln("Start comdat ", cast(string)(sec.name ~ '$' ~ names[name-1]), " length:", data.length);
+                    /*foreach(v; data)
+                        writef("%.2X ", v);
+                    writeln();*/
                 }
                 //writeln(flags, ' ', attributes, ' ', comdat);
                 //writeln("COMDAT name:", cast(string)names[name-1], " ", cast(string)sections[baseSec-1].name, isLocal ? " local" : "");
@@ -417,7 +447,13 @@ public:
     {
         f.seek(0);
         auto modend = false;
-        OmfRecord lastdata;
+
+        uint defOffset;
+        Section defSection;
+        bool defIterate;
+        immutable(ubyte)[] defData;
+        bool defOff16;
+
         while (!f.empty() && !modend)
         {
             auto r = loadRecord();
@@ -437,8 +473,6 @@ public:
             case OmfRecordType.GRPDEF:
             case OmfRecordType.PUBDEF16:
             case OmfRecordType.PUBDEF32:
-            case OmfRecordType.COMDAT16:
-            case OmfRecordType.COMDAT32:
             case OmfRecordType.EXTDEF:
             case OmfRecordType.CEXTDEF:
             case OmfRecordType.COMDEF:
@@ -450,13 +484,65 @@ public:
             case OmfRecordType.LEXTDEF:
                 enforce(false, "Record type " ~ to!string(r.type) ~ " not implemented");
                 break;
+            case OmfRecordType.COMDAT16:
+            case OmfRecordType.COMDAT32:
+                writeRecord(defOffset, defSection, defIterate, defData, defOff16);
+                auto off16 = (r.type == OmfRecordType.COMDAT16);
+                auto flags = getByte(data);
+                auto isLocal = (flags & 0x4) != 0;
+                auto isIterated = (flags & 0x2) != 0;
+                assert(flags < 8);
+                auto attributes = getByte(data);
+                assert((attributes & 0xF0) <= 0x10);
+                assert((attributes & 0x0F) == 0x00);
+                auto alignment = getByte(data);
+                auto offset = off16 ? getWordLE(data) : getDwordLE(data);
+                auto type = getIndex(data);
+                auto baseGroup = getIndex(data);
+                enforce(baseGroup <= groups.length, "Invalid base group index");
+                auto baseSec = getIndex(data);
+                enforce(baseSec <= sections.length, "Invalid base section index");
+                if (baseSec == 0)
+                    auto baseFrame = getWordLE(data);
+                auto name = getIndex(data);
+                auto sym = symtab.deepSearch(names[name-1]);
+                assert(sym);
+                assert(cast(ComdatSymbol)sym);
+                auto sec = (cast(ComdatSymbol)sym).sec;
+                defOffset = offset;
+                defSection = sec;
+                defIterate = isIterated;
+                defData = data;
+                defOff16 = off16;
+                //writeln("COMDAT ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
+                //writeln(sec.base, ' ', sec.container.base, ' ', flags, ' ', sec.container.members.length);
+                break;
             case OmfRecordType.LEDATA16:
             case OmfRecordType.LEDATA32:
+                writeRecord(defOffset, defSection, defIterate, defData, defOff16);
+                auto off16 = (r.type == OmfRecordType.LEDATA16);
+                auto index = getIndex(data);
+                enforce(index <= sections.length, "Invalid section index");
+                defOffset = off16 ? getWordLE(data) : getDwordLE(data);
+                defSection = sections[index-1];
+                defIterate = false;
+                defData = data;
+                defOff16 = off16;
+                //writeln("LEDATA ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
+                break;
             case OmfRecordType.LIDATA16:
             case OmfRecordType.LIDATA32:
-                if (lastdata.type)
-                    writeRecord(lastdata);
-                lastdata = r;
+                writeRecord(defOffset, defSection, defIterate, defData, defOff16);
+                auto off16 = (r.type == OmfRecordType.LIDATA16);
+                auto index = getIndex(data);
+                enforce(index <= sections.length, "Invalid section index");
+                defOffset = off16 ? getWordLE(data) : getDwordLE(data);
+                defSection = sections[index-1];
+                defIterate = true;
+                defData = data;
+                defOff16 = off16;
+                //writeln("LIDATA ", cast(string)defSection.fullname, '+', defOffset, " ", data.length, " bytes");
+                //writeln(data);
                 break;
             case OmfRecordType.FIXUPP16:
             case OmfRecordType.FIXUPP32:
@@ -497,6 +583,7 @@ public:
                         //writeln("F", frametype, " T", (P << 2) | Targt);
                         uint targetAddress;
                         writeln(location, ' ', displacement, ' ', offset);
+                        writeln("in ", cast(string)defSection.fullname);
                         switch(Targt)
                         {
                         case 0:
@@ -557,8 +644,7 @@ public:
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
                 modend = true;
-                if (lastdata.type)
-                    writeRecord(lastdata);
+                writeRecord(defOffset, defSection, defIterate, defData, defOff16);
                 break;
             default:
                 enforce(false, "Unsupported record type: " ~ to!string(r.type));
@@ -567,48 +653,38 @@ public:
         }
     }
 private:
-    void writeRecord(OmfRecord r)
+    void writeRecord(uint offset, Section sec, bool iterate, immutable(ubyte)[] data, bool off16)
     {
-        auto data = r.data;
-        switch (r.type)
+        //enforce(sec.secclass != SectionClass.BSS, "Error: Data defined for uninitialized block");
+        if (!data.length)
+            return;
+        assert(sec);
+        if (!sec.length)
+            return;
+        if (sec.secclass == SectionClass.BSS)
+            return;
+        if (sec.secclass == SectionClass.DEBSYM)
+            return;
+        if (iterate)
         {
-        case OmfRecordType.LEDATA16:
-        case OmfRecordType.LEDATA32:
-            auto off16 = (r.type == OmfRecordType.LEDATA16);
-            auto index = getIndex(data);
-            enforce(index <= sections.length, "Invalid section index");
-            auto offset = off16 ? getWordLE(data) : getDwordLE(data);
-            auto sec = sections[index-1];
-            //enforce(sec.secclass != SectionClass.BSS, "Error: Data defined for uninitialized block");
-            if (sec.secclass == SectionClass.BSS)
-                break;
-            if (sec.secclass == SectionClass.DEBSYM)
-                break;
-            enforce(offset + data.length <= sec.length, "Data is too big for section");
-            sec.data[offset..offset + data.length] = data[];
-            //writeln("LEDATA ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
-            break;
-        case OmfRecordType.LIDATA16:
-        case OmfRecordType.LIDATA32:
-            auto off16 = (r.type == OmfRecordType.LIDATA16);
-            auto index = getIndex(data);
-            enforce(index <= sections.length, "Invalid section index");
-            auto offset = off16 ? getWordLE(data) : getDwordLE(data);
-            auto sec = sections[index-1];
-            if (sec.secclass == SectionClass.BSS)
-                break;
-            if (sec.secclass == SectionClass.DEBSYM)
-                break;
             void readDataBlock(immutable(ubyte)[] data)
             {
                 auto repCount = off16 ? getWordLE(data) : getDwordLE(data);
                 auto blockCount = getWordLE(data);
+                //writeln("rep: ", repCount);
+                //writeln("blk: ", blockCount);
                 immutable(ubyte)[] repdata;
                 if (!blockCount)
                 {
                     repdata = getString(data);
+                    //writeln("***********************************");
+                    //writeln(offset, ": ", repdata, " * ", repCount);
                     foreach(i; 0..repCount)
                     {
+                        //writeln(cast(string)sec.fullname);
+                        //writeln(offset, " + ", repdata.length, " <= ", sec.length);
+                        //writeln(sec.data.length);
+                        enforce(offset + repdata.length <= sec.length, "Data is too big for section");
                         sec.data[offset..offset + repdata.length] = repdata;
                         offset += repdata.length;
                     }
@@ -616,15 +692,17 @@ private:
                 }
                 else
                 {
+                    assert(blockCount == 1);
                     foreach(i; 0..repCount)
                         readDataBlock(data);
                 }
             }
             readDataBlock(data);
-            //writeln("LIDATA ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
-            break;
-        default:
-            assert(0);
+        } else {
+            //writeln(cast(string)sec.fullname);
+            //writeln(offset, ' ', data.length, ' ', sec.length);
+            enforce(offset + data.length <= sec.length, "Data is too big for section");
+            sec.data[offset..offset + data.length] = data[];
         }
     }
     OmfRecord loadRecord()

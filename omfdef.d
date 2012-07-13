@@ -7,6 +7,7 @@ import datafile;
 
 enum OmfRecordType
 {
+    INVALID,
     THEADR, // Translator Header Record
     LHEADR, // Library Module Header Record
     COMENT, // Comment Record (Including all comment class extensions)

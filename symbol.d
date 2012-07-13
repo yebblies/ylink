@@ -86,14 +86,12 @@ final class ExternSymbol : Symbol
 final class ComdatSymbol : Symbol
 {
     Section sec;
-    CombinedSection csec;
     uint offset;
     Comdat comdat;
-    this(Section sec, CombinedSection csec, immutable(ubyte)[] name, uint offset, Comdat comdat, bool isLocal)
+    this(Section sec, immutable(ubyte)[] name, uint offset, Comdat comdat, bool isLocal)
     {
         super(name, 0, isLocal);
         this.sec = sec;
-        this.csec = csec;
         this.offset = offset;
         this.comdat = comdat;
     }
@@ -103,8 +101,8 @@ final class ComdatSymbol : Symbol
     }
     override uint getAddress()
     {
-        assert(csec);
-        return csec.base + offset;
+        assert(sec);
+        return sec.base + offset;
     }
 }
 

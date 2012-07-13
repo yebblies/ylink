@@ -94,6 +94,7 @@ final class Section
         this.secclass = secclass;
         this.secalign = secalign;
         this.length = (length + secalign - 1) & ~(secalign - 1);
+        //this.length = length;
     }
 }
 
