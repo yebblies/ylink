@@ -7,6 +7,7 @@ import std.stdio;
 import objectfile;
 import omfobjectfile;
 import paths;
+import pe;
 import relocation;
 import sectiontable;
 import segment;
@@ -75,5 +76,6 @@ void main(string[] args)
         auto object = objects.pop();
         object.loadData(segments[SegmentType.TLS].base);
     }
+    buildPE("out.exe", segments, symtab);
     writeln("Success!");
 }

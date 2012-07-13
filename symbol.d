@@ -121,7 +121,6 @@ final class ComdefSymbol : Symbol
     }
     override uint getAddress()
     {
-        dump();
         assert(sec, cleanString(name));
         return sec.base;
     }

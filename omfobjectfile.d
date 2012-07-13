@@ -463,7 +463,7 @@ public:
             case OmfRecordType.THEADR:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
-                writeln("Module: ", cast(string)r.data[1..$]);
+                //writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
@@ -576,19 +576,19 @@ public:
                         if (P == 0)
                             displacement = getDwordLE(data);
 
-                        writeln("FIXUP M:", M, " location:", location, " offset:", offset, " F:", F, " frametype:", frametype);
+                        //writeln("FIXUP M:", M, " location:", location, " offset:", offset, " F:", F, " frametype:", frametype);
                         //writeln("      T:", T, " P:", P, " Targt: ", Targt, " frame:", frame, " target:", target, " disp:", displacement);
                         enforce(!F, "Frame threads are not supported");
                         enforce(!T, "Target threads are not supported");
                         //writeln("F", frametype, " T", (P << 2) | Targt);
                         uint targetBase;
                         uint targetAddress;
-                        writeln(location, ' ', displacement, ' ', offset);
-                        writeln("in ", cast(string)defSection.fullname);
+                        //writeln(location, ' ', displacement, ' ', offset);
+                        //writeln("in ", cast(string)defSection.fullname);
                         switch(Targt)
                         {
                         case 0:
-                            writeln("FIXUP target Segment relative (", cast(string)sections[target-1].name, ")");
+                            //writeln("FIXUP target Segment relative (", cast(string)sections[target-1].name, ")");
                             auto targetSec = sections[target-1];
                             targetBase = targetSec.base;
                             targetAddress = targetBase + displacement;
@@ -596,7 +596,7 @@ public:
                         case 2:
                             //writeln(externs.length, ' ', target);
                             //writeln(cast(string[])externs);
-                            writeln("FIXUP target Extern relative (", cast(string)externs[target-1], ")");
+                            //writeln("FIXUP target Extern relative (", cast(string)externs[target-1], ")");
                             auto extname = externs[target-1];
                             auto sym = symtab.deepSearch(extname);
                             assert(sym, cast(string)extname);
@@ -611,16 +611,16 @@ public:
                         switch(frametype)
                         {
                         case 0:
-                            writeln("FIXUP frame  Segment relative (", cast(string)sections[frame-1].name, ")");
+                            //writeln("FIXUP frame  Segment relative (", cast(string)sections[frame-1].name, ")");
                             baseAddress = sections[frame-1].base;
                             break;
                         case 1:
-                            writeln("FIXUP frame  Group relative (", cast(string)names[groups[frame-1].name-1], ")");
+                            //writeln("FIXUP frame  Group relative (", cast(string)names[groups[frame-1].name-1], ")");
                             enforce(names[groups[frame-1].name-1] == "FLAT");
                             baseAddress = 0;
                             break;
                         case 5: // used for eh tables
-                            writeln("FIXUP frame  Target X relative");
+                            //writeln("FIXUP frame  Target X relative");
                             baseAddress = targetBase;
                             break;
                         default:
@@ -629,7 +629,8 @@ public:
                         if (!M)
                         {
                             // self-relative
-                            enforce(baseAddress == 0);
+                            //enforce(baseAddress == 0);
+                            //writeln(Targt);
                             baseAddress = defSection.base + offset;
                         }
                         // Warning: incoming casts: we know defData is unique
@@ -637,18 +638,18 @@ public:
                         switch(location)
                         {
                         case 9: // 32-bit offset
-                            writefln("### FIXUP 32b (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
+                            //writefln("### FIXUP 32b (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
                             enforce(offset + 4 <= xdata.length);
                             (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - baseAddress;
                             break;
                         case 10: // tls offset?
-                            writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, tlsBase, targetBase, displacement);
+                            //writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, tlsBase, targetBase, displacement);
                             enforce(offset + 4 <= xdata.length);
                             (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - tlsBase;
                             break;
                         case 11: // seg-offset
                             assert(0);
-                            writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
+                            //writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
                             enforce(offset + 5 <= xdata.length);
                             break;
                         default:
@@ -661,9 +662,11 @@ public:
                 break;
             case OmfRecordType.LINNUM:
                 writeln("LINNUM");
+                assert(0);
                 break;
             case OmfRecordType.LINSYM:
                 writeln("LINSYM");
+                assert(0);
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
@@ -723,9 +726,9 @@ private:
             }
             readDataBlock(data);
         } else {
-            writeln(cast(string)sec.fullname);
-            writeln(offset, ' ', data.length, ' ', sec.length);
-            writeBytes(data);
+            //writeln(cast(string)sec.fullname);
+            //writeln(offset, ' ', data.length, ' ', sec.length);
+            //writeBytes(data);
             enforce(offset + data.length <= sec.length, "Data is too big for section");
             sec.data[offset..offset + data.length] = data[];
         }
