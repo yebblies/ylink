@@ -581,6 +581,7 @@ public:
                         enforce(!F, "Frame threads are not supported");
                         enforce(!T, "Target threads are not supported");
                         //writeln("F", frametype, " T", (P << 2) | Targt);
+                        uint targetBase;
                         uint targetAddress;
                         writeln(location, ' ', displacement, ' ', offset);
                         writeln("in ", cast(string)defSection.fullname);
@@ -589,7 +590,8 @@ public:
                         case 0:
                             writeln("FIXUP target Segment relative (", cast(string)sections[target-1].name, ")");
                             auto targetSec = sections[target-1];
-                            targetAddress = targetSec.base + offset;
+                            targetBase = targetSec.base;
+                            targetAddress = targetBase + displacement;
                             break;
                         case 2:
                             //writeln(externs.length, ' ', target);
@@ -598,23 +600,28 @@ public:
                             auto extname = externs[target-1];
                             auto sym = symtab.deepSearch(extname);
                             assert(sym, cast(string)extname);
-                            targetAddress = sym.getAddress();
+                            targetBase = sym.getAddress();
+                            targetAddress = targetBase + displacement;
                             break;
                         default:
                             enforce(false, "Group-relative targets are not supported");
                             break;
                         }
+                        uint baseAddress;
                         switch(frametype)
                         {
                         case 0:
                             writeln("FIXUP frame  Segment relative (", cast(string)sections[frame-1].name, ")");
+                            baseAddress = sections[frame-1].base;
                             break;
                         case 1:
                             writeln("FIXUP frame  Group relative (", cast(string)names[groups[frame-1].name-1], ")");
                             enforce(names[groups[frame-1].name-1] == "FLAT");
+                            baseAddress = 0;
                             break;
-                        case 5:
+                        case 5: // used for eh tables
                             writeln("FIXUP frame  Target X relative");
+                            baseAddress = targetBase;
                             break;
                         default:
                             assert(0);
@@ -622,10 +629,16 @@ public:
                         switch(location)
                         {
                         case 9: // 32-bit offset
+                            writefln("### FIXUP 32b (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
+                            enforce(offset + 4 <= defData.length);
                             break;
                         case 10: // tls offset?
+                            writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
+                            enforce(offset + 4 <= defData.length);
                             break;
                         case 11: // seg-offset
+                            writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
+                            enforce(offset + 5 <= defData.length);
                             break;
                         default:
                             enforce(false, "Only some weirdly selected and undocumented offset fixups are supported");

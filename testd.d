@@ -8,6 +8,11 @@ extern(C) extern int _imp__;
 
 public void func()
 {
+    int[int] x;
+    try {
+    foreach(a, b; x) {}
+    } catch {
+    }
 }
 
 int main()

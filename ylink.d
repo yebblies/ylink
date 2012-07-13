@@ -74,4 +74,5 @@ void main(string[] args)
         auto object = objects.pop();
         object.loadData();
     }
+    writeln("Success!");
 }
