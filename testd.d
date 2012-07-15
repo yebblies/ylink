@@ -1,4 +1,5 @@
 
+/*
 __gshared int global_shared = 0x12345678;
 uint global_tls = 0x89898989;
 extern int global_extern;
@@ -28,4 +29,11 @@ int main()
     auto c = a + b + 1;
     //_imp__ = _imp__blah();
     return c;
+}*/
+
+import core.stdc.stdio;
+
+void main()
+{
+    printf("Hello!\n");
 }

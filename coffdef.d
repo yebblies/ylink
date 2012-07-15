@@ -117,12 +117,28 @@ struct DataDirectories
     IMAGE_DATA_DIRECTORY LoadConfigTable;
     IMAGE_DATA_DIRECTORY BoundImportTable;
     IMAGE_DATA_DIRECTORY ImportAddressTable;
+    IMAGE_DATA_DIRECTORY DelayImportDescriptor;
+    IMAGE_DATA_DIRECTORY CLRRuntimeHeader;
+    IMAGE_DATA_DIRECTORY Reserved;
 }
+
+immutable char[8][] SectionNames =
+[
+    ".idata\0\0",
+    ".edata\0\0",
+    ".text\0\0\0",
+    ".tls\0\0\0\0",
+    ".data\0\0\0",
+    ".rdata\0\0",
+    ".bss\0\0\0\0",
+    ".reloc\0\0",
+    ".debug\0\0",
+];
 
 struct SectionHeader
 {
 align(1):
-    char[8] name;
+    char[8] Name;
     uint VirtualSize;
     uint VirtualAddress;
     uint SizeOfRawData;
@@ -193,6 +209,4 @@ enum : ushort
     IMAGE_REL_I386_TOKEN = 0x000C,
     IMAGE_REL_I386_SECREL7 = 0x000D,
     IMAGE_REL_I386_REL32 = 0x0014,
-    IMAGE_REL_I386_ = 0x000,
-    IMAGE_REL_I386_ = 0x000,
 }

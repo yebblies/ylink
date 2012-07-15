@@ -22,13 +22,15 @@ final class Segment
     SegmentType type;
     uint base;
     uint length;
+    uint fileOffset;
     CombinedSection[] members;
     ubyte[] data;
 
-    this(SegmentType type, uint base)
+    this(SegmentType type, uint base, uint fileOffset)
     {
         this.type = type;
         this.base = base;
+        this.fileOffset = fileOffset;
     }
     void append(CombinedSection sec)
     {

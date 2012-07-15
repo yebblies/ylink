@@ -4,6 +4,7 @@ import std.file;
 import std.path;
 import std.stdio;
 
+import linker;
 import objectfile;
 import omfobjectfile;
 import paths;
@@ -63,7 +64,8 @@ void main(string[] args)
     symtab.defineSpecial(sectab);
     symtab.allocateComdef(sectab);
     symtab.checkUnresolved();
-    auto segments = sectab.allocateSegments(0x00400000, 0x1000);
+    auto segments = sectab.allocateSegments(imageBase, segAlign, fileAlign);
+    symtab.buildImports(segments[SegmentType.Import].data);
     if (dump)
     {
         sectab.dump();

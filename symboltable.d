@@ -195,6 +195,9 @@ final class SymbolTable
         //writeln("Defined import segment: ", offset, " bytes");
         sectab.add(sec);
     }
+    void buildImports(ubyte[] data)
+    {
+    }
     void defineSpecial(SectionTable sectab)
     {
         auto dataend = new Section(cast(immutable(ubyte)[])"__dataend", SectionClass.Data, SectionAlign.align_1, 0);
