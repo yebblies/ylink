@@ -174,10 +174,10 @@ final class SymbolTable
         // Hint-Name Table
         foreach(lib, syms; imports)
         {
-            offset += (2 + lib.length + 1) & ~1;
+            offset += (1 + lib.length + 1) & ~1;
             foreach(sym; syms)
                 if (sym.expName.length)
-                    offset += (2 + sym.expName.length + 1) & ~1;
+                    offset += (3 + sym.expName.length + 1) & ~1;
         }
         foreach(lib, syms; imports)
         {
@@ -197,6 +197,68 @@ final class SymbolTable
     }
     void buildImports(ubyte[] data)
     {
+        void writeWordLE(ref uint offset, ushort d)
+        {
+            (cast(ushort[])data[offset..offset+2])[0] = d;
+            offset += 2;
+        }
+        void writeDwordLE(ref uint offset, uint d)
+        {
+            (cast(uint[])data[offset..offset+4])[0] = d;
+            offset += 4;
+        }
+        void writeByte(ref uint offset, ubyte d)
+        {
+            data[offset] = d;
+            offset++;
+        }
+        void writeString(ref uint offset, in ubyte[] str)
+        {
+            data[offset..offset+str.length] = str[];
+            offset += str.length;
+        }
+        void writeHint(ref uint offset, immutable(ubyte)[] name)
+        {
+            offset += 2;
+            writeString(offset, name);
+            offset++;
+            if (offset & 1)
+                offset++;
+        }
+        enum idataRVA = 0x1000;
+        uint totalImports;
+        foreach(lib, syms; imports)
+            totalImports += syms.length + 1;
+        uint directoryOffset = 0;
+        uint lookupOffset = (imports.length + 1) * 5 * 4;
+        uint hintOffset = lookupOffset + (totalImports * 4);
+        uint libHintOffset = hintOffset;
+        foreach(lib, syms; imports)
+            foreach(sym; syms)
+                libHintOffset += (3 + sym.expName.length + 1) & ~1;
+        uint addressOffset = libHintOffset;
+        foreach(lib, syms; imports)
+            addressOffset += (1 + lib.length + 1) & ~1;
+
+        foreach(libname, syms; imports)
+        {
+            writeDwordLE(directoryOffset, lookupOffset + idataRVA);
+            writeDwordLE(directoryOffset, 0);
+            writeDwordLE(directoryOffset, 0);
+            writeDwordLE(directoryOffset, libHintOffset + idataRVA);
+            writeDwordLE(directoryOffset, addressOffset + idataRVA);
+            foreach(sym; syms)
+            {
+                assert(sym.expName.length);
+                writeDwordLE(lookupOffset, hintOffset + idataRVA);
+                writeDwordLE(addressOffset, hintOffset + idataRVA);
+                writeHint(hintOffset, sym.expName);
+            }
+            lookupOffset += 4;
+            addressOffset += 4;
+            writeString(libHintOffset, libname);
+            libHintOffset++;
+        }
     }
     void defineSpecial(SectionTable sectab)
     {
