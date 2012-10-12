@@ -1,5 +1,6 @@
 
 import std.stdio;
+import std.conv;
 
 immutable regname = ["AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"];
 
@@ -26,7 +27,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x0C: return "OR AL imm8";
     case 0x0D: return "OR eAX imm16/32";
     case 0x0E: return "PUSH CS";
-    case 0x0F: return "prefix 0F";
+    case 0x0F: return prefix(op, ptr+1);
     case 0x10: return "ADC r/m8 r8";
     case 0x11: return "ADC r/m16/32 r16/32";
     case 0x12: return "ADC r8 r/m8";
@@ -133,10 +134,12 @@ string X86Disassemble(ubyte *ptr)
     case 0x8F: return "POP r/m16/32";
     case 0x90: .. case 0x97:
         return "XCHG eAX " ~ regname[op - 0x90];
+    case 0x99: return "CWD EDX EAX";
     case 0xA0:
     case 0xA1:
     case 0xA2:
     case 0xA3: return "MOV";
+    case 0xA5: return "MOVS m16/32 m16/32";
     case 0xA8:
     case 0xA9: return "TEST";
     case 0xAB: return "STOS";
@@ -160,9 +163,9 @@ string X86Disassemble(ubyte *ptr)
     case 0xE8: return "CALL";
     case 0xE9: return "JMP";
     case 0xEB: return "JMP";
-    case 0xF0: return "prefix LOCK";
-    case 0xF2: return "prefix F2";
-    case 0xF3: return prefixF3(ptr+1);
+    case 0xF0: return prefix(op, ptr+1);
+    case 0xF2: return prefix(op, ptr+1);
+    case 0xF3: return prefix(op, ptr+1);
     case 0xF6: return "group F6";
     case 0xF7: return "group F7";
     case 0xFC: return "CLD";
@@ -174,18 +177,83 @@ string X86Disassemble(ubyte *ptr)
     }
 }
 
-string prefixF3(ubyte *ptr)
+string prefix(ubyte pre, ubyte *ptr)
 {
     ubyte op;
-    switch(op = *ptr)
+    switch(pre)
     {
-    case 0xA5: return "REP MOVS m16/32 m16/32";
-    case 0xA6: return "REP CMPS m8 m8";
-    case 0xA7: return "REP CMPS m16 m16";
-    case 0xAB: return "REP STOS m16/32 eAX";
-    case 0xAF: return "REP SCAS m16/32 eAX";
+    case 0x0F:
+        switch(op = *ptr)
+        {
+        case 0x34: return "SYSENTER";
+        case 0x80: return "JO imm16/32";
+        case 0x81: return "JNO imm16/32";
+        case 0x82: return "JB imm16/32";
+        case 0x83: return "JNB imm16/32";
+        case 0x84: return "JZ imm16/32";
+        case 0x85: return "JNZ imm16/32";
+        case 0x86: return "JBE imm16/32";
+        case 0x87: return "JNBE imm16/32";
+        case 0x88: return "JS imm16/32";
+        case 0x89: return "JNS imm16/32";
+        case 0x8A: return "JP imm16/32";
+        case 0x8B: return "JNP imm16/32";
+        case 0x8C: return "JL imm16/32";
+        case 0x8D: return "JNL imm16/32";
+        case 0x8E: return "JLE imm16/32";
+        case 0x8F: return "JNLE imm16/32";
+        case 0x90: return "SETO imm16/32";
+        case 0x91: return "SETNO imm16/32";
+        case 0x92: return "SETB imm16/32";
+        case 0x93: return "SETNB imm16/32";
+        case 0x94: return "SETZ imm16/32";
+        case 0x95: return "SETNZ imm16/32";
+        case 0x96: return "SETBE imm16/32";
+        case 0x97: return "SETNBE imm16/32";
+        case 0x98: return "SETS imm16/32";
+        case 0x99: return "SETNS imm16/32";
+        case 0x9A: return "SETP imm16/32";
+        case 0x9B: return "SETNP imm16/32";
+        case 0x9C: return "SETL imm16/32";
+        case 0x9D: return "SETNL imm16/32";
+        case 0x9E: return "SETLE imm16/32";
+        case 0x9F: return "SETNLE imm16/32";
+        case 0xAC: return "SHRD r/m16/32 r16/32 imm8";
+        case 0xAD: return "SHRD r/m16/32 r16/32 CL";
+        case 0xAF: return "IMUL r16/32 r/m16/32";
+        case 0xB0: return "CMPXCHG r/m8 AL";
+        case 0xB1: return "CMPXCHG r/m16/32 eAX";
+        case 0xB6: return "MOVZX r16/32 r/m8";
+        case 0xB7: return "MOVZX r16/32 r/m16/32";
+        case 0xBE: return "MOVSX r16/32 r/m8";
+        case 0xBF: return "MOVSX r16/32 r/m16";
+        case 0xC0: return "XADD r/m8 r8";
+        case 0xC1: return "XADD r/m16/32 r16/32";
+        default:
+            writefln("Unknown opcode: %.2X %.2X", pre, op);
+            assert(0);
+        }
+        break;
+    case 0xF0:
+        return "LOCK " ~ X86Disassemble(ptr);
+    case 0xF2:
+    case 0xF3:
+        auto repstr = (pre == 0xF2) ? "REPNZ" : "REPZ";
+        switch(op = *ptr)
+        {
+        case 0xA4: return repstr ~ " MOVS m8 m8";
+        case 0xA5: return repstr ~ " MOVS m16/32 m16/32";
+        case 0xA6: return repstr ~ " CMPS m8 m8";
+        case 0xA7: return repstr ~ " CMPS m16 m16";
+        case 0xAA: return repstr ~ " STOS m8 AL";
+        case 0xAB: return repstr ~ " STOS m16/32 eAX";
+        case 0xAE: return repstr ~ " SCAS m8 AL";
+        case 0xAF: return repstr ~ " SCAS m16/32 eAX";
+        default:
+            writefln("Unknown opcode: %.2X %.2X", pre, op);
+            assert(0);
+        }
     default:
-        writefln("Unknown opcode: F3 %.2X", op);
-        assert(0);
+        assert(0, "Unknown prefix " ~ to!string(pre));
     }
 }
