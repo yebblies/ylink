@@ -1,14 +1,17 @@
 
 import std.stdio;
+import std.string;
 import std.conv;
 
 immutable regname = ["AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"];
+immutable regname32 = ["EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI"];
 
 string X86Disassemble(ubyte *ptr)
 {
     ubyte op;
     ubyte regrm;
     string name;
+    string ovr;
 
     switch(op = *ptr)
     {
@@ -77,18 +80,18 @@ string X86Disassemble(ubyte *ptr)
     case 0x3E: return "override DS";
     case 0x3F: return "AAS AL AH";
     case 0x40: .. case 0x47:
-        return "INC " ~ regname[op - 0x40];
+        return "INC " ~ regname32[op - 0x40];
     case 0x48: .. case 0x4F:
-        return "DEC " ~ regname[op - 0x48];
+        return "DEC " ~ regname32[op - 0x48];
     case 0x50: .. case 0x57:
-        return "PUSH " ~ regname[op - 0x50];
+        return "PUSH " ~ regname32[op - 0x50];
     case 0x58: .. case 0x5F:
-        return "POP " ~ regname[op - 0x58];
+        return "POP " ~ regname32[op - 0x58];
     case 0x60: return "PUSHAD";
     case 0x61: return "POPAD";
     case 0x62: return "BOUND r16/32 m16/32&16/32";
     case 0x63: return "ARPL r/m16 r16";
-    case 0x64: return "override FS";
+    case 0x64: return "override FS " ~ X86Disassemble(ptr+1);
     case 0x65: return "override GS";
     case 0x66: return "override 66";
     case 0x67: return "override 67";
@@ -127,7 +130,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x88: return "MOV r/m8 r8";
     case 0x89: return "MOV r/m16/32/ r16/32";
     case 0x8A: return "MOV r8 r/m8";
-    case 0x8B: return "MOV r16/32 r/m16/32";
+    case 0x8B: return "MOV " ~ modrm32(ptr+1); //16/32 r/m16/32
     case 0x8C: return "MOV r/m16 Sreg";
     case 0x8D: return "LEA r16/32";
     case 0x8E: return "MOV Sreg r/m16";
@@ -160,7 +163,7 @@ string X86Disassemble(ubyte *ptr)
     case 0xD2: return "group D2";
     case 0xD3: return "group D3";
     case 0xE3: return "JCXZ";
-    case 0xE8: return "CALL";
+    case 0xE8: return "CALL EIP+" ~ readimm32(ptr+1);
     case 0xE9: return "JMP";
     case 0xEB: return "JMP";
     case 0xF0: return prefix(op, ptr+1);
@@ -256,4 +259,44 @@ string prefix(ubyte pre, ubyte *ptr)
     default:
         assert(0, "Unknown prefix " ~ to!string(pre));
     }
+}
+
+string modrm32(ubyte* ptr)
+{
+    auto d = *ptr;
+    auto mod = d >> 6;
+    auto reg2 = (d >> 3) & 0x7;
+    auto reg1 = d & 0x7;
+    auto haveSIB = false;
+    switch(mod)
+    {
+    case 0:
+        if (reg1 == 5) // [32]
+        {
+            return "[imm32]";
+        }
+        else if (reg1 == 4)
+        {
+            haveSIB = true;
+            return "SIB";
+        }
+        else // [reg]
+        {
+            return "[" ~ regname32[reg1] ~ "] " ~ regname32[reg2];
+        }
+        break;
+    case 1: // [reg+8]
+        return "[" ~ regname32[reg1] ~ "+imm8] " ~ regname32[reg2];
+    case 2: // [reg+16]
+        return "[" ~ regname32[reg1] ~ "+imm16] " ~ regname32[reg2];
+    case 3: // reg
+        return regname32[reg1] ~ " " ~ regname32[reg2];
+    default:
+        assert(0);
+    }
+}
+
+string readimm32(ubyte* ptr)
+{
+    return format("%.8X", *cast(uint*)ptr);
 }
