@@ -6,6 +6,7 @@ extern(Windows) BOOL TerminateProcess(HANDLE hProcess, UINT uExitCode);
 extern(Windows) BOOL WaitForDebugEvent(LPDEBUG_EVENT lpDebugEvent, DWORD dwMilliseconds);
 extern(Windows) BOOL ContinueDebugEvent(DWORD dwProcessId, DWORD dwThreadId, DWORD dwContinueStatus);
 extern(Windows) BOOL ReadProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T *lpNumberOfBytesRead);
+extern(Windows) BOOL WriteProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T *lpNumberOfBytesWritten);
 
 enum DBG_CONTINUE = 0x00010002;
 enum DBG_EXCEPTION_NOT_HANDLED = 0x80010001;
@@ -227,3 +228,14 @@ struct RIP_INFO
 alias RIP_INFO* LPRIP_INFO;
 
 extern(Windows) alias DWORD function(LPVOID lpThreadParameter) LPTHREAD_START_ROUTINE;
+
+struct MODULEINFO
+{
+    LPVOID lpBaseOfDll;
+    DWORD SizeOfImage;
+    LPVOID EntryPoint;
+}
+alias MODULEINFO* LPMODULEINFO;
+
+extern(Windows) BOOL EnumProcessModules(HANDLE hProcess, HMODULE *lphModule, DWORD cb, LPDWORD lpcbNeeded);
+extern(Windows) BOOL GetModuleInformation(HANDLE hProcess, HMODULE hModule, LPMODULEINFO lpmodinfo, DWORD cb);

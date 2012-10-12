@@ -8,6 +8,26 @@ import windebug;
 
 import x86dis;
 
+void* getStartAddress(HANDLE p)
+{
+    HMODULE[256] modules;
+    DWORD n;
+    assert(EnumProcessModules(p, modules.ptr, modules.length * HMODULE.sizeof, &n), to!string(GetLastError()));
+    n /= HMODULE.sizeof;
+    if (n > modules.length)
+        n = modules.length;
+    foreach(i, m; modules[0..n])
+    {
+        MODULEINFO mi;
+        assert(GetModuleInformation(p, m, &mi, MODULEINFO.sizeof));
+        if (mi.lpBaseOfDll == cast(void*)0x400000)
+        {
+            return mi.EntryPoint;
+        }
+    }
+    assert(0);
+}
+
 void main()
 {
     STARTUPINFO si;
@@ -18,6 +38,7 @@ void main()
     bool[DWORD] firstException;
     int processCount;
     File*[DWORD] output;
+    ubyte[DWORD] replaced;
 
     enforce(CreateProcessA("testd.exe", null, null, null, false, DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, null, null, &si, &pi0));
     threads[pi0.dwThreadId] = pi0.hThread;
@@ -58,7 +79,28 @@ void main()
                     if (firstException[de.dwProcessId])
                     {
                         firstException[de.dwProcessId] = false;
-                        goto case EXCEPTION_SINGLE_STEP;
+                        // First breakpoint, somewhere in kernel land
+                        auto entrypoint = getStartAddress(processes[de.dwProcessId]);
+                        //writefln("Entry point found at %.8X", entrypoint);
+                        ubyte rep;
+                        assert(ReadProcessMemory(processes[de.dwProcessId], entrypoint, &rep, 1, null));
+                        replaced[de.dwProcessId] = rep;
+                        rep = 0xCC;
+                        assert(WriteProcessMemory(processes[de.dwProcessId], entrypoint, &rep, 1, null));
+                    }
+                    else
+                    {
+                        // Second one, we placed it at the beginning of the program
+                        //writefln("Removed from: %.8X", de.Exception.ExceptionRecord.ExceptionAddress);
+                        ubyte rep = replaced[de.dwProcessId];
+                        assert(WriteProcessMemory(processes[de.dwProcessId], de.Exception.ExceptionRecord.ExceptionAddress, &rep, 1, null));
+                        auto hThread = threads[de.dwThreadId];
+                        CONTEXT context;
+                        context.ContextFlags = CONTEXT_FULL;
+                        enforce(GetThreadContext(hThread, &context), to!string(GetLastError()));
+                        context.EFlags |= 0x100;
+                        context.Eip--;
+                        enforce(SetThreadContext(hThread, &context));
                     }
                     break;
                 case EXCEPTION_SINGLE_STEP:
@@ -73,8 +115,8 @@ void main()
                     enforce(SetThreadContext(hThread, &context));
                     //fh.rawWrite((&context.Edi)[0..12]);
                     ubyte[64] inst;
-                    ReadProcessMemory(processes[de.dwProcessId], de.Exception.ExceptionRecord.ExceptionAddress, inst.ptr, 64, null);
-                    fh.writeln(X86Disassemble(inst.ptr));
+                    ReadProcessMemory(processes[de.dwProcessId], de.Exception.ExceptionRecord.ExceptionAddress, inst.ptr, 32, null);
+                    fh.writefln("%.8X: %s", de.Exception.ExceptionRecord.ExceptionAddress, X86Disassemble(inst.ptr));
                     //fh.rawWrite(inst[0..1]);
                     //fh.writefln("Breakpoint EIP: %.8X ESP: %.8X EBP: %.8X", context.Eip, context.Esp, context.Ebp);
                     //fh.writefln("           EAX: %.8X EBX: %.8X ECX: %.8X EDX: %.8X", context.Eax, context.Ebx, context.Ecx, context.Edx);

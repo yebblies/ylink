@@ -10,7 +10,7 @@ $(YLINK): $(SRC)
 	dmd -of$(YLINK) $(SRC)
 
 $(DEBLINK): $(DEBLINKSRC)
-	dmd -of$(DEBLINK) $(DEBLINKSRC)
+	dmd -of$(DEBLINK) $(DEBLINKSRC) psapi.lib
 
 testhello.obj: testhello.c
 	dmc -c testhello.c
@@ -18,8 +18,8 @@ testhello.obj: testhello.c
 testd.exe: testhello.obj
 	link testhello.obj,testd.exe
 
-teste.exe: testhello.obj
-	ylink testhello.obj -o teste.exe
+teste.exe: testhello.obj $(YLINK)
+	$(YLINK) testhello.obj -o teste.exe
 
 test: $(YLINK) $(DEBLINK) testd.exe teste.exe
 	deblink
