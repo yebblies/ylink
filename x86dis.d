@@ -165,7 +165,7 @@ string X86Disassemble(ubyte *ptr)
     case 0xE3: return "JCXZ";
     case 0xE8: return "CALL EIP" ~ readimm!int(ptr+1);
     case 0xE9: return "JMP EIP" ~ readimm!int(ptr+1);
-    case 0xEB: return "JMP";
+    case 0xEB: return "JMP EIP" ~ readimm!byte(ptr+1);;
     case 0xF0: return prefix(op, ptr+1);
     case 0xF2: return prefix(op, ptr+1);
     case 0xF3: return prefix(op, ptr+1);
