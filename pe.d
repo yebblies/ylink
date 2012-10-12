@@ -90,9 +90,18 @@ void buildPE(string filename, Segment[SegmentType] segments, SymbolTable symtab)
         Debug.VirtualAddress = 0x00000000;
         Debug.Size = 0x00000000;
 
-        auto tlstab = symtab.searchName(cast(immutable(ubyte)[])"__tls_used").getAddress() - imageBase;
-        TLSTable.VirtualAddress = tlstab;
-        TLSTable.Size = 24;
+        auto tlsused = symtab.searchName(cast(immutable(ubyte)[])"__tls_used");
+        if (tlsused)
+        {
+            auto tlstab = tlsused.getAddress() - imageBase;
+            TLSTable.VirtualAddress = tlstab;
+            TLSTable.Size = 24;
+        }
+        else
+        {
+            TLSTable.VirtualAddress = 0;
+            TLSTable.Size = 0;
+        }
     }
     f.rawWrite((&dd)[0..1]);
 

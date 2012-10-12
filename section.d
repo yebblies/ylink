@@ -87,7 +87,7 @@ final class Section
 
     this(immutable(ubyte)[] name, SectionClass secclass, SectionAlign secalign, uint length)
     {
-        auto i = name.indexOf('$');
+        auto i = name.countUntil('$');
         this.fullname = name;
         this.name = i == -1 ? name : name[0..i];
         this.tag = i == -1 ? null : name[i..$];

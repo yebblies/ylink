@@ -643,6 +643,7 @@ public:
                             (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - baseAddress;
                             break;
                         case 10: // tls offset?
+                            enforce(tlsBase != -1);
                             //writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, tlsBase, targetBase, displacement);
                             enforce(offset + 4 <= xdata.length);
                             (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - tlsBase;

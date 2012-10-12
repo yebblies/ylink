@@ -22,23 +22,31 @@ void main(string[] args)
     Paths paths = new Paths();
     paths.add(".");
     paths.addLINK();
+    string outputfile;
 
-    foreach(s; args[1..$])
+    for (auto i = 1; i < args.length; i++)
     {
-        switch(s)
+        switch(args[i])
         {
+        case "-o":
+            i++;
+            if (i < args.length)
+                outputfile = args[i];
+            break;
         case "-d":
             dump = true;
             break;
         default:
-            switch(extension(s))
+            switch(extension(args[i]))
             {
             case ".obj":
+                if (!outputfile.length)
+                    outputfile = args[i].setExtension("exe");
             case ".lib":
-                objectFilenames ~= s;
+                objectFilenames ~= args[i];
                 break;
             default:
-                enforce(false, "Unknown file type: '" ~ s ~ "'");
+                enforce(false, "Unknown file type: '" ~ args[i] ~ "'");
                 break;
             }
             break;
@@ -76,8 +84,8 @@ void main(string[] args)
     while (!objects.empty())
     {
         auto object = objects.pop();
-        object.loadData(segments[SegmentType.TLS].base);
+        object.loadData((SegmentType.TLS in segments) ? segments[SegmentType.TLS].base : -1);
     }
-    buildPE("out.exe", segments, symtab);
+    buildPE(outputfile, segments, symtab);
     writeln("Success!");
 }
