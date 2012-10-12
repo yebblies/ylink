@@ -119,10 +119,10 @@ string X86Disassemble(ubyte *ptr)
     case 0x7D: return "JNL";
     case 0x7E: return "JLE";
     case 0x7F: return "JNLE";
-    case 0x80: return "group 80";
-    case 0x81: return "group 81";
-    case 0x82: return "group 82";
-    case 0x83: return "group 83";
+    case 0x80: return extend8X(ptr);
+    case 0x81: return extend8X(ptr);
+    case 0x82: return extend8X(ptr);
+    case 0x83: return extend8X(ptr);
     case 0x84: return "TEST r/m8 r8";
     case 0x85: return "TEST r/m16/32 r16/32";
     case 0x86: return "XCHG r8 r/m8";
@@ -327,4 +327,15 @@ string readimm(T : uint)(ubyte* ptr)
 {
     T v = *cast(T*)ptr;
     return format("+%.8X", v);
+}
+
+string extend8X(ubyte* ptr)
+{
+    auto op = *ptr++;
+    auto d = *ptr;
+    auto mod = d >> 6;
+    auto op2 = (d >> 3) & 0x7;
+    auto reg1 = d & 0x7;
+    string name = ["ADD", "OR", "ADC", "SBB", "AND", "SUB", "XOR", "CMP"][op2];
+    return name ~ " ???";
 }
