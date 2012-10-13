@@ -19,7 +19,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x01: return "ADD r/m16/32 r16/32";
     case 0x02: return "ADD r8 r/m8";
     case 0x03: return "ADD r16/32 r/m16/32";
-    case 0x04: return "ADD AL, " ~ readimm!byte(ptr+1);
+    case 0x04: return "ADD AL, " ~ readoff!byte(ptr+1);
     case 0x05: return "ADD eAX imm16/32";
     case 0x06: return "PUSH ES";
     case 0x07: return "POP ES";
@@ -27,7 +27,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x09: return "OR r/m16/32 r16/32";
     case 0x0A: return "OR r8 r/m8";
     case 0x0B: return "OR r16/32 r/m16/32";
-    case 0x0C: return "OR AL, " ~ readimm!byte(ptr+1);
+    case 0x0C: return "OR AL, " ~ readoff!byte(ptr+1);
     case 0x0D: return "OR eAX imm16/32";
     case 0x0E: return "PUSH CS";
     case 0x0F: return prefix(op, ptr+1);
@@ -35,7 +35,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x11: return "ADC r/m16/32 r16/32";
     case 0x12: return "ADC r8 r/m8";
     case 0x13: return "ADC r16/32 r/m16/32";
-    case 0x14: return "ADC AL, " ~ readimm!byte(ptr+1);
+    case 0x14: return "ADC AL, " ~ readoff!byte(ptr+1);
     case 0x15: return "ADC eAX imm16/32";
     case 0x16: return "PUSH SS";
     case 0x17: return "POP SS";
@@ -43,7 +43,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x19: return "SBB r/m16/32 r16/32";
     case 0x1A: return "SBB r8 r/m8";
     case 0x1B: return "SBB r16/32 r/m16/32";
-    case 0x1C: return "SBB AL, " ~ readimm!byte(ptr+1);
+    case 0x1C: return "SBB AL, " ~ readoff!byte(ptr+1);
     case 0x1D: return "SBB eAX imm16/32";
     case 0x1E: return "PUSH DS";
     case 0x1F: return "POP DS";
@@ -51,7 +51,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x21: return "AND r/m16/32 r16/32";
     case 0x22: return "AND r8 r/m8";
     case 0x23: return "AND r16/32 r/m16/32";
-    case 0x24: return "AND AL, " ~ readimm!byte(ptr+1);
+    case 0x24: return "AND AL, " ~ readoff!byte(ptr+1);
     case 0x25: return "AND eAX imm16/32";
     case 0x26: return "override ES";
     case 0x27: return "DAA AL";
@@ -59,7 +59,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x29: return "SUB r/m16/32 r16/32";
     case 0x2A: return "SUB r8 r/m8";
     case 0x2B: return "SUB r16/32 r/m16/32";
-    case 0x2C: return "SUB AL, " ~ readimm!byte(ptr+1);
+    case 0x2C: return "SUB AL, " ~ readoff!byte(ptr+1);
     case 0x2D: return "SUB eAX imm16/32";
     case 0x2E: return "override CS";
     case 0x2F: return "DAS AL";
@@ -67,7 +67,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x31: return "XOR r/m16/32 r16/32";
     case 0x32: return "XOR r8 r/m8";
     case 0x33: return "XOR r16/32 r/m16/32";
-    case 0x34: return "XOR AL, " ~ readimm!byte(ptr+1);
+    case 0x34: return "XOR AL, " ~ readoff!byte(ptr+1);
     case 0x35: return "XOR eAX imm16/32";
     case 0x36: return "override SS";
     case 0x37: return "AAA AL AH";
@@ -75,7 +75,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x39: return "CMP r/m16/32 r16/32";
     case 0x3A: return "CMP r8 r/m8";
     case 0x3B: return "CMP r16/32 r/m16/32";
-    case 0x3C: return "CMP AL, " ~ readimm!byte(ptr+1);
+    case 0x3C: return "CMP AL, " ~ readoff!byte(ptr+1);
     case 0x3D: return "CMP eAX imm16/32";
     case 0x3E: return "override DS";
     case 0x3F: return "AAS AL AH";
@@ -97,7 +97,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x67: return "override 67";
     case 0x68: return "PUSH imm16/32";
     case 0x69: return "IMUL r16/32 r/m16/32 imm16/32";
-    case 0x6A: return "PUSH " ~ readimm!byte(ptr+1);
+    case 0x6A: return "PUSH " ~ readoff!byte(ptr+1);
     case 0x6B: return "IMUL r16/32 r/m16/32 imm8";
     case 0x6C: return "INS m8 DX";
     case 0x6D: return "INS m16 DX";
@@ -136,20 +136,20 @@ string X86Disassemble(ubyte *ptr)
     case 0x8E: return "MOV Sreg r/m16";
     case 0x8F: return "POP r/m16/32";
     case 0x90: .. case 0x97:
-        return "XCHG eAX " ~ regname[op - 0x90];
+        return "XCHG eAX " ~ regname32[op - 0x90];
     case 0x99: return "CWD EDX EAX";
     case 0xA0:
     case 0xA1:
     case 0xA2:
-    case 0xA3: return "MOV";
+    case 0xA3: return "MOV [" ~ readabs!uint(ptr+1) ~ "], EAX";
     case 0xA5: return "MOVS m16/32 m16/32";
     case 0xA8:
     case 0xA9: return "TEST";
     case 0xAB: return "STOS";
     case 0xB0: .. case 0xB7:
-        return "MOV " ~ regname[op - 0xB0] ~ ", " ~ readimm!byte(ptr+1);
+        return "MOV " ~ regname32[op - 0xB0] ~ ", " ~ readoff!byte(ptr+1);
     case 0xB8: .. case 0xBF:
-        return "MOV " ~ regname[op - 0xB8] ~ " imm16/32";
+        return "MOV " ~ regname32[op - 0xB8] ~ " imm16/32";
     case 0xC0: return "group C0";
     case 0xC1: return "group C1";
     case 0xC2: return "RETN imm16";
@@ -163,9 +163,9 @@ string X86Disassemble(ubyte *ptr)
     case 0xD2: return "group D2";
     case 0xD3: return "group D3";
     case 0xE3: return "JCXZ";
-    case 0xE8: return "CALL EIP" ~ readimm!int(ptr+1);
-    case 0xE9: return "JMP EIP" ~ readimm!int(ptr+1);
-    case 0xEB: return "JMP EIP" ~ readimm!byte(ptr+1);;
+    case 0xE8: return "CALL EIP" ~ readoff!int(ptr+1);
+    case 0xE9: return "JMP EIP" ~ readoff!int(ptr+1);
+    case 0xEB: return "JMP EIP" ~ readoff!byte(ptr+1);;
     case 0xF0: return prefix(op, ptr+1);
     case 0xF2: return prefix(op, ptr+1);
     case 0xF3: return prefix(op, ptr+1);
@@ -173,7 +173,7 @@ string X86Disassemble(ubyte *ptr)
     case 0xF7: return "group F7";
     case 0xFC: return "CLD";
     case 0xFE: return "group FE";
-    case 0xFF: return "group FF";
+    case 0xFF: return groupFF(ptr);
     default:
         writefln("Unknown opcode: %.2X", op);
         assert(0);
@@ -273,7 +273,7 @@ string modrm32(ubyte* ptr)
     case 0:
         if (reg1 == 5) // [32]
         {
-            return regname32[reg2] ~ ", [" ~ readimm!uint(ptr+1) ~ "]";
+            return regname32[reg2] ~ ", [" ~ readoff!uint(ptr+1) ~ "]";
         }
         else if (reg1 == 4)
         {
@@ -286,7 +286,7 @@ string modrm32(ubyte* ptr)
         }
         break;
     case 1: // [reg+8]
-        return regname32[reg2] ~ ", [" ~ regname32[reg1] ~ readimm!byte(ptr+1) ~ "]";
+        return regname32[reg2] ~ ", [" ~ regname32[reg1] ~ readoff!byte(ptr+1) ~ "]";
     case 2: // [reg+16]
         return regname32[reg2] ~ ", [" ~ regname32[reg1] ~ "+imm16]";
     case 3: // reg
@@ -296,7 +296,7 @@ string modrm32(ubyte* ptr)
     }
 }
 
-string readimm(T : byte)(ubyte* ptr)
+string readoff(T : byte)(ubyte* ptr)
 {
     T v = *cast(T*)ptr;
     if (v > 0)
@@ -305,7 +305,7 @@ string readimm(T : byte)(ubyte* ptr)
         return format("-%.2X", -v);
 }
 
-string readimm(T : short)(ubyte* ptr)
+string readoff(T : short)(ubyte* ptr)
 {
     T v = *cast(T*)ptr;
     if (v > 0)
@@ -314,7 +314,7 @@ string readimm(T : short)(ubyte* ptr)
         return format("-%.4X", -v);
 }
 
-string readimm(T : int)(ubyte* ptr)
+string readoff(T : int)(ubyte* ptr)
 {
     T v = *cast(T*)ptr;
     if (v > 0)
@@ -323,10 +323,16 @@ string readimm(T : int)(ubyte* ptr)
         return format("-%.8X", -v);
 }
 
-string readimm(T : uint)(ubyte* ptr)
+string readoff(T : uint)(ubyte* ptr)
 {
     T v = *cast(T*)ptr;
     return format("+%.8X", v);
+}
+
+string readabs(T : uint)(ubyte* ptr)
+{
+    T v = *cast(T*)ptr;
+    return format("%.8X", v);
 }
 
 string extend8X(ubyte* ptr)
@@ -338,4 +344,22 @@ string extend8X(ubyte* ptr)
     auto reg1 = d & 0x7;
     string name = ["ADD", "OR", "ADC", "SBB", "AND", "SUB", "XOR", "CMP"][op2];
     return name ~ " ???";
+}
+
+string groupFF(ubyte* ptr)
+{
+    auto op = *ptr++;
+    auto d = *ptr;
+    auto mod = d >> 6;
+    auto op2 = (d >> 3) & 0x7;
+    auto reg1 = d & 0x7;
+    assert(op2 != 7);
+    string name = ["INC", "DEC", "CALL", "CALLF", "JMP", "JMPF", "PUSH"][op2];
+    switch (mod)
+    {
+    case 0:
+        return name ~ " [" ~ readabs!uint(ptr+1) ~ "]";
+    default:
+        return name ~ " ???";
+    }
 }
