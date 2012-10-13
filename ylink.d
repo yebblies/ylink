@@ -69,8 +69,8 @@ void main(string[] args)
         object.loadSymbols(symtab, sectab, queue, objects);
     }
     symtab.defineImports(sectab);
-    symtab.defineSpecial(sectab);
     symtab.allocateComdef(sectab);
+    symtab.defineSpecial(sectab);
     symtab.checkUnresolved();
     auto segments = sectab.allocateSegments(imageBase, segAlign, fileAlign);
     symtab.buildImports(segments[SegmentType.Import].data);
@@ -88,4 +88,6 @@ void main(string[] args)
     }
     buildPE(outputfile, segments, symtab);
     writeln("Success!");
+    if (dump && 0)
+        symtab.dumpLoc();
 }
