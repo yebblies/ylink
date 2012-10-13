@@ -125,6 +125,13 @@ final class SymbolTable
         foreach(s; undefined)
             s.dump();
     }
+    void dumpLoc()
+    {
+        foreach(s; symbols)
+        {
+            writefln("%s: %.8X", cast(char[])s.name, s.getAddress());
+        }
+    }
     void merge()
     {
         assert(parent);
@@ -277,6 +284,7 @@ final class SymbolTable
             {
                 auto sec = new Section(cast(immutable(ubyte)[])"_DATA$" ~ s.name, SectionClass.Data, SectionAlign.align_1, s.size);
                 s.sec = sec;
+                sectab.add(sec);
             }
         }
         foreach(sym; hiddenSyms)
@@ -285,6 +293,7 @@ final class SymbolTable
             {
                 auto sec = new Section(cast(immutable(ubyte)[])"_DATA$" ~ s.name, SectionClass.Data, SectionAlign.align_1, s.size);
                 s.sec = sec;
+                sectab.add(sec);
             }
         }
     }
