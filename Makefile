@@ -25,6 +25,6 @@ test: $(YLINK) $(DEBLINK) testd.exe teste.exe
 	deblink
 
 clean:
-	-rm *.exe
-	-rm *.obj
-	-rm *.txt
+	-del *.exe
+	-del *.obj
+	-del *.txt
