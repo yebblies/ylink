@@ -138,9 +138,13 @@ string X86Disassemble(ubyte *ptr)
     case 0x90: .. case 0x97:
         return "XCHG eAX " ~ regname32[op - 0x90];
     case 0x99: return "CWD EDX EAX";
-    case 0xA0:
-    case 0xA1:
-    case 0xA2:
+    case 0x9B: return "FWAIT";
+    case 0x9C: return "PUSHFD";
+    case 0x9D: return "POPF";
+    case 0x9E: return "SAHF AH";
+    case 0xA0: return "MOV AL, [" ~ readabs!ubyte(ptr+1) ~ "]";
+    case 0xA1: return "MOV EAX, [" ~ readabs!uint(ptr+1) ~ "]";
+    case 0xA2: return "MOV [" ~ readabs!ubyte(ptr+1) ~ "], AL";
     case 0xA3: return "MOV [" ~ readabs!uint(ptr+1) ~ "], EAX";
     case 0xA5: return "MOVS m16/32 m16/32";
     case 0xA8:
@@ -162,7 +166,16 @@ string X86Disassemble(ubyte *ptr)
     case 0xD1: return "group D1";
     case 0xD2: return "group D2";
     case 0xD3: return "group D3";
+    case 0xD8: return "group D8";
+    case 0xD9: return "group D9";
+    case 0xDA: return "group DA";
+    case 0xDB: return "group DB";
+    case 0xDC: return "group DC";
+    case 0xDD: return "group DD";
+    case 0xDE: return "group DE";
+    case 0xDF: return "group DF";
     case 0xE3: return "JCXZ";
+    case 0xE2: return "LOOP ECX, EIP" ~ readoff!byte(ptr+1);
     case 0xE8: return "CALL EIP" ~ readoff!int(ptr+1);
     case 0xE9: return "JMP EIP" ~ readoff!int(ptr+1);
     case 0xEB: return "JMP EIP" ~ readoff!byte(ptr+1);;
@@ -221,6 +234,8 @@ string prefix(ubyte pre, ubyte *ptr)
         case 0x9D: return "SETNL imm16/32";
         case 0x9E: return "SETLE imm16/32";
         case 0x9F: return "SETNLE imm16/32";
+        case 0xA2: return "CPUID";
+        case 0xAB: return "BTS " ~ modrm32(ptr+1);
         case 0xAC: return "SHRD r/m16/32 r16/32 imm8";
         case 0xAD: return "SHRD r/m16/32 r16/32 CL";
         case 0xAF: return "IMUL r16/32 r/m16/32";
@@ -327,6 +342,12 @@ string readoff(T : uint)(ubyte* ptr)
 {
     T v = *cast(T*)ptr;
     return format("+%.8X", v);
+}
+
+string readabs(T : ubyte)(ubyte* ptr)
+{
+    T v = *cast(T*)ptr;
+    return format("%.2X", v);
 }
 
 string readabs(T : uint)(ubyte* ptr)

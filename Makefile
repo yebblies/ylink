@@ -4,6 +4,8 @@ SRC=ylink.d coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflib
 DEBLINK=deblink.exe
 DEBLINKSRC=deblink.d windebug.d x86dis.d
 
+TESTOBJ=testd.obj
+
 default: test
 
 $(YLINK): $(SRC)
@@ -15,11 +17,14 @@ $(DEBLINK): $(DEBLINKSRC)
 testhello.obj: testhello.c
 	dmc -c testhello.c
 
-testd.exe: testhello.obj
-	link /MAP testhello.obj,testd.exe
+testd.obj: testd.d
+	dmd -c testd.d
 
-teste.exe: testhello.obj $(YLINK)
-	$(YLINK) testhello.obj -o teste.exe -m
+testd.exe: $(TESTOBJ)
+	link /MAP $(TESTOBJ),testd.exe
+
+teste.exe: $(TESTOBJ) $(YLINK)
+	$(YLINK) $(TESTOBJ) -o teste.exe -m
 
 test: $(YLINK) $(DEBLINK) testd.exe teste.exe
 	deblink
