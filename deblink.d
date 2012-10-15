@@ -34,9 +34,11 @@ void* getStartAddress(HANDLE p)
 string[uint] getSyms(string fn)
 {
     string[uint] r;
-    auto lines = (cast(string)read(fn)).splitLines().map!split();
-    foreach(l; lines)
-        r[to!uint(l[0], 16)] = l[1];
+    foreach(l; File(fn, "r").byLine())
+    {
+        auto x = split(l);
+        r[to!uint(x[0], 16)] = x[1].idup;
+    }
     return r;
 }
 
