@@ -169,7 +169,9 @@ final class SymbolTable
     void defineImports(SectionTable sectab)
     {
         auto sec = new Section(cast(immutable(ubyte)[])".idata", SectionClass.IData, SectionAlign.align_2, 0);
+        auto tsec = new Section(cast(immutable(ubyte)[])"TEXT$ImportThunks", SectionClass.Code, SectionAlign.align_4, 0);
         size_t offset;
+        size_t toffset;
         enum dirEntrySize = 5 * 4;
         enum importEntrySize = 4;
         // Import Directory
@@ -191,18 +193,21 @@ final class SymbolTable
             foreach(sym; syms)
             {
                 auto s = new PublicSymbol(sec, cast(immutable(ubyte)[])"__imp_" ~ sym.name, offset);
-                sym.sec = sec;
-                sym.offset = offset;
                 offset += importEntrySize;
                 this.add(s);
+                sym.sec = tsec;
+                sym.offset = toffset;
+                toffset += 6;
             }
         }
         offset += importEntrySize; // null entry
         sec.length = offset;
         //writeln("Defined import segment: ", offset, " bytes");
         sectab.add(sec);
+        tsec.length = toffset;
+        sectab.add(tsec);
     }
-    void buildImports(ubyte[] data)
+    void buildImports(ubyte[] data, uint base)
     {
         void writeWordLE(ref uint offset, ushort d)
         {
@@ -233,6 +238,7 @@ final class SymbolTable
                 offset++;
         }
         enum idataRVA = 0x1000;
+        auto idataVA = base + idataRVA;
         uint totalImports;
         foreach(lib, syms; imports)
             totalImports += syms.length + 1;
@@ -256,6 +262,10 @@ final class SymbolTable
             writeDwordLE(directoryOffset, addressOffset + idataRVA);
             foreach(sym; syms)
             {
+                auto tsec = sym.sec;
+                auto tdata = tsec.data;
+                tdata[sym.offset..sym.offset+2] = [0xFF, 0x25];
+                (cast(uint[])tdata[sym.offset+2..sym.offset+6])[0] = addressOffset + idataVA;
                 assert(sym.expName.length);
                 writeDwordLE(lookupOffset, hintOffset + idataRVA);
                 writeDwordLE(addressOffset, hintOffset + idataRVA);

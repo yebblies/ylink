@@ -77,7 +77,7 @@ void main(string[] args)
     symtab.defineSpecial(sectab);
     symtab.checkUnresolved();
     auto segments = sectab.allocateSegments(imageBase, segAlign, fileAlign);
-    symtab.buildImports(segments[SegmentType.Import].data);
+    symtab.buildImports(segments[SegmentType.Import].data, imageBase);
     if (dump)
     {
         sectab.dump();
