@@ -463,7 +463,7 @@ public:
             case OmfRecordType.THEADR:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
-                //writeln("Module: ", cast(string)r.data[1..$]);
+                debug(OMFDATA) writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
@@ -514,8 +514,9 @@ public:
                 defIterate = isIterated;
                 defData = data;
                 defOff16 = off16;
-                //writeln("COMDAT ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
-                //writeln(sec.base, ' ', sec.container.base, ' ', flags, ' ', sec.container.members.length);
+                debug(OMFDATA) writeln("COMDAT ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
+                debug(OMFDATA) writeln(sec.base, ' ', sec.container.base, ' ', flags, ' ', sec.container.members.length);
+                debug(OMFDATA) writefln("[%(%.2X %)]", data);
                 break;
             case OmfRecordType.LEDATA16:
             case OmfRecordType.LEDATA32:
@@ -528,7 +529,8 @@ public:
                 defIterate = false;
                 defData = data;
                 defOff16 = off16;
-                //writeln("LEDATA ", cast(string)sec.fullname, '+', offset, " ", data.length, " bytes");
+                debug(OMFDATA) writeln("LEDATA ", cast(string)defSection.fullname, '+', defOffset, " ", data.length, " bytes");
+                debug(OMFDATA) writefln("[%(%.2X %)]", data);
                 break;
             case OmfRecordType.LIDATA16:
             case OmfRecordType.LIDATA32:
@@ -541,8 +543,8 @@ public:
                 defIterate = true;
                 defData = data;
                 defOff16 = off16;
-                //writeln("LIDATA ", cast(string)defSection.fullname, '+', defOffset, " ", data.length, " bytes");
-                //writeln(data);
+                debug(OMFDATA) writeln("LIDATA ", cast(string)defSection.fullname, '+', defOffset, " ", data.length, " bytes");
+                debug(OMFDATA) writefln("[%(%.2X %)]", data);
                 break;
             case OmfRecordType.FIXUPP16:
             case OmfRecordType.FIXUPP32:
@@ -588,7 +590,7 @@ public:
                         switch(Targt)
                         {
                         case 0:
-                            //writeln("FIXUP target Segment relative (", cast(string)sections[target-1].name, ")");
+                            debug(fixup) writeln("\nFIXUP target Segment relative (", cast(string)sections[target-1].name, ")");
                             auto targetSec = sections[target-1];
                             targetBase = targetSec.base;
                             targetAddress = targetBase + displacement;
@@ -596,9 +598,10 @@ public:
                         case 2:
                             //writeln(externs.length, ' ', target);
                             //writeln(cast(string[])externs);
-                            //writeln("FIXUP target Extern relative (", cast(string)externs[target-1], ")");
+                            debug(fixup) writeln("\nFIXUP target Extern relative (", cast(string)externs[target-1], ")");
                             auto extname = externs[target-1];
                             auto sym = symtab.deepSearch(extname);
+                            debug(fixup) sym.dump();
                             assert(sym, cast(string)extname);
                             targetBase = sym.getAddress();
                             targetAddress = targetBase + displacement;
@@ -611,16 +614,16 @@ public:
                         switch(frametype)
                         {
                         case 0:
-                            //writeln("FIXUP frame  Segment relative (", cast(string)sections[frame-1].name, ")");
+                            debug(fixup) writeln("FIXUP frame  Segment relative (", cast(string)sections[frame-1].name, ")");
                             baseAddress = sections[frame-1].base;
                             break;
                         case 1:
-                            //writeln("FIXUP frame  Group relative (", cast(string)names[groups[frame-1].name-1], ")");
+                            debug(fixup) writeln("FIXUP frame  Group relative (", cast(string)names[groups[frame-1].name-1], ")");
                             enforce(names[groups[frame-1].name-1] == "FLAT");
                             baseAddress = 0;
                             break;
                         case 5: // used for eh tables
-                            //writeln("FIXUP frame  Target X relative");
+                            debug(fixup) writeln("FIXUP frame  Target X relative");
                             baseAddress = targetBase;
                             break;
                         default:
@@ -630,27 +633,27 @@ public:
                         {
                             // self-relative
                             //enforce(baseAddress == 0);
-                            //writeln(Targt);
-                            baseAddress = defSection.base + offset;
+                            debug(fixup) writeln("Relative");
+                            baseAddress = defSection.base + offset + 4;
                         }
                         // Warning: incoming casts: we know defData is unique
                         auto xdata = cast()defData;
                         switch(location)
                         {
                         case 9: // 32-bit offset
-                            //writefln("### FIXUP 32b (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
+                            debug(fixup) writefln("### FIXUP 32b (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
                             enforce(offset + 4 <= xdata.length);
                             (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - baseAddress;
                             break;
                         case 10: // tls offset?
                             enforce(tlsBase != -1);
-                            //writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, tlsBase, targetBase, displacement);
+                            debug(fixup) writefln("### FIXUP tls (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, tlsBase, targetBase, displacement);
                             enforce(offset + 4 <= xdata.length);
                             (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - tlsBase;
                             break;
                         case 11: // seg-offset
                             assert(0);
-                            //writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
+                            debug(fixup) writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
                             enforce(offset + 5 <= xdata.length);
                             break;
                         default:
