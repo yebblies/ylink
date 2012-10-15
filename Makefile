@@ -16,10 +16,10 @@ testhello.obj: testhello.c
 	dmc -c testhello.c
 
 testd.exe: testhello.obj
-	link testhello.obj,testd.exe
+	link /MAP testhello.obj,testd.exe
 
 teste.exe: testhello.obj $(YLINK)
-	$(YLINK) testhello.obj -o teste.exe
+	$(YLINK) testhello.obj -o teste.exe -m
 
 test: $(YLINK) $(DEBLINK) testd.exe teste.exe
 	deblink

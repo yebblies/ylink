@@ -18,6 +18,7 @@ import workqueue;
 void main(string[] args)
 {
     bool dump;
+    bool map;
     string[] objectFilenames;
     Paths paths = new Paths();
     paths.add(".");
@@ -35,6 +36,9 @@ void main(string[] args)
             break;
         case "-d":
             dump = true;
+            break;
+        case "-m":
+            map = true;
             break;
         default:
             switch(extension(args[i]))
@@ -88,6 +92,6 @@ void main(string[] args)
     }
     buildPE(outputfile, segments, symtab);
     writeln("Success!");
-    if (dump && 0)
-        symtab.dumpLoc();
+    if (map)
+        symtab.makeMap(outputfile.setExtension("map"));
 }

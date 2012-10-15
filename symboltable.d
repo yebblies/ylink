@@ -125,11 +125,12 @@ final class SymbolTable
         foreach(s; undefined)
             s.dump();
     }
-    void dumpLoc()
+    void makeMap(string fn)
     {
+        auto f = File(fn, "w");
         foreach(s; symbols)
         {
-            writefln("%s: %.8X", cast(char[])s.name, s.getAddress());
+            f.writefln("%.8X\t%s", s.getAddress(), cast(char[])s.name);
         }
     }
     void merge()
