@@ -636,6 +636,11 @@ public:
                             debug(fixup) writeln("Relative");
                             baseAddress = defSection.base + offset + 4;
                         }
+                        else
+                        {
+                            debug(fixup) writeln("Direct");
+                            baseAddress = 0;
+                        }
                         // Warning: incoming casts: we know defData is unique
                         auto xdata = cast()defData;
                         switch(location)
