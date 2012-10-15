@@ -176,8 +176,7 @@ final class SymbolTable
         offset += dirEntrySize; // null entry
         // Import Lookup Tables
         foreach(lib, syms; imports)
-            offset += syms.length * importEntrySize;
-        offset += importEntrySize; // null entry
+            offset += (syms.length + 1) * importEntrySize;
         // Hint-Name Table
         foreach(lib, syms; imports)
         {
