@@ -169,6 +169,7 @@ void main()
                 break;
             case LOAD_DLL_DEBUG_EVENT:
                 writeln("LOAD_DLL_DEBUG_EVENT");
+                //de.LoadDll.lpImageName
                 break;
             case UNLOAD_DLL_DEBUG_EVENT:
                 writeln("UNLOAD_DLL_DEBUG_EVENT");

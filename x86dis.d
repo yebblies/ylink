@@ -160,6 +160,7 @@ string X86Disassemble(ubyte *ptr)
     case 0xC3: return "RETN";
     case 0xC6: return "group C6";
     case 0xC7: return "group C7";
+    case 0xC8: return "ENTER";
     case 0xC9: return "LEAVE";
     case 0xCC: return "INT 3";
     case 0xD0: return "group D0";

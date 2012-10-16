@@ -31,9 +31,9 @@ int main()
     return c;
 }*/
 
-import core.stdc.stdio;
+import std.stdio;
 
 void main()
 {
-    printf("Hello!\n");
+    writeln("Hello!");
 }
