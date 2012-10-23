@@ -31,17 +31,6 @@ void* getStartAddress(HANDLE p)
     assert(0);
 }
 
-string[uint] getSyms(string fn)
-{
-    string[uint] r;
-    foreach(l; File(fn, "r").byLine())
-    {
-        auto x = split(l);
-        r[to!uint(x[0], 16)] = x[1].idup;
-    }
-    return r;
-}
-
 void main()
 {
     STARTUPINFO si;
@@ -53,7 +42,6 @@ void main()
     int processCount;
     File*[DWORD] output;
     ubyte[DWORD] replaced;
-    string[uint][DWORD] syms;
 
     enforce(CreateProcessA("testd.exe", null, null, null, false, DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, null, null, &si, &pi0));
     threads[pi0.dwThreadId] = pi0.hThread;
@@ -61,7 +49,6 @@ void main()
     firstException[pi0.dwProcessId] = true;
     processCount++;
     output[pi0.dwProcessId] = new File("p0.txt", "wb");
-    syms[pi0.dwProcessId] = getSyms("testd.sym");
 
     if (1)
     {
@@ -71,7 +58,6 @@ void main()
         firstException[pi1.dwProcessId] = true;
         processCount++;
         output[pi1.dwProcessId] = new File("p1.txt", "wb");
-        syms[pi1.dwProcessId] = getSyms("teste.sym");
     }
 
     //ResumeThread(pi0.hThread);
@@ -131,16 +117,11 @@ void main()
                     context.EFlags |= 0x100;
                     enforce(SetThreadContext(hThread, &context));
                     //fh.rawWrite((&context.Edi)[0..12]);
-                    ubyte[64] inst;
+                    ubyte[16] inst;
                     auto addr = de.Exception.ExceptionRecord.ExceptionAddress;
-                    ReadProcessMemory(processes[de.dwProcessId], addr, inst.ptr, 32, null);
-                    auto p = cast(uint)addr;
-                    auto func = "__Unknown__";
-                    while (p >= 0x400000 && p <= 0x500000 && p !in syms[de.dwProcessId])
-                        p--;
-                    if (p in syms[de.dwProcessId])
-                        func = syms[de.dwProcessId][p];
-                    fh.writefln("%.8X: %s (%s)", addr, X86Disassemble(inst.ptr), func);
+                    ReadProcessMemory(processes[de.dwProcessId], addr, inst.ptr, 16, null);
+                    //fh.writefln("%.8X: %s (%s+0x%X)", addr, X86Disassemble(inst.ptr), func, cast(uint)addr-p);
+                    fh.writefln("%.8X %(%.2X%)", addr, inst[]);
                     //fh.writeln(X86Disassemble(inst.ptr));
                     //fh.rawWrite(inst[0..1]);
                     //fh.writefln("Breakpoint EIP: %.8X ESP: %.8X EBP: %.8X", context.Eip, context.Esp, context.Ebp);
@@ -149,7 +130,12 @@ void main()
                     break;
                 default:
                     cont = DBG_EXCEPTION_NOT_HANDLED;
-                    output[de.dwProcessId].writefln("Unknown exception 0x%.8X", de.Exception.ExceptionRecord.ExceptionCode);
+                    auto fh = output[de.dwProcessId];
+                    auto addr = de.Exception.ExceptionRecord.ExceptionAddress;
+                    auto code = de.Exception.ExceptionRecord.ExceptionCode;
+                    ubyte[16] inst;
+                    ReadProcessMemory(processes[de.dwProcessId], addr, inst.ptr, 16, null);
+                    fh.writefln("%.8X %(%.2X%) %s %.8X", addr, inst[], "__Unknown_Exception__", cast(uint)code);
                     break;
                 }
                 break;

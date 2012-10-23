@@ -3,36 +3,97 @@ import std.conv;
 import std.exception;
 import std.process;
 import std.stdio;
+import std.string;
 
+import x86dis;
 import windebug;
 
 void main()
 {
-    auto f0 = File("p0.txt", "rb");
-    auto f1 = File("p1.txt", "rb");
+    dump("p0.txt", "testd.sym", "log0.txt");
+    dump("p1.txt", "teste.sym", "log1.txt");
+}
 
-    size_t count;
-    while (!f0.eof())
+string[uint] getSyms(string fn)
+{
+    string[uint] r;
+    foreach(l; File(fn, "r").byLine())
     {
-        CONTEXT context0;
-        ubyte inst0;
-        f0.rawRead((&context0.Edi)[0..12]);
-        f0.rawRead((&inst0)[0..1]);
-        CONTEXT context1;
-        ubyte inst1;
-        f1.rawRead((&context1.Edi)[0..12]);
-        f1.rawRead((&inst1)[0..1]);
-        if (inst0 != inst1)
-        {
-            writeln("Different at: ", count);
-            writefln("   EIP: %.8X ESP: %.8X EBP: %.8X", context0.Eip, context0.Esp, context0.Ebp);
-            writefln("   EAX: %.8X EBX: %.8X ECX: %.8X EDX: %.8X", context0.Eax, context0.Ebx, context0.Ecx, context0.Edx);
-            writefln("EFLAGS: %.8X ESI: %.8X EDI: %.8X VAL: %.2X", context0.EFlags, context0.Esi, context0.Edi, inst0);
-            writefln("   EIP: %.8X ESP: %.8X EBP: %.8X", context1.Eip, context1.Esp, context1.Ebp);
-            writefln("   EAX: %.8X EBX: %.8X ECX: %.8X EDX: %.8X", context1.Eax, context1.Ebx, context1.Ecx, context1.Edx);
-            writefln("EFLAGS: %.8X ESI: %.8X EDI: %.8X VAL: %.2X", context1.EFlags, context1.Esi, context1.Edi, inst1);
-            return;
-        }
-        count++;
+        auto x = split(l);
+        r[to!uint(x[0], 16)] = x[1].idup;
     }
+    return r;
+}
+
+void dump(string src, string symf, string dest)
+{
+    auto f0 = File(src, "rb");
+    auto l0 = f0.byLine();
+
+    uint lastbase;
+    bool u;
+    bool full;
+
+    auto out0 = File(dest, "w");
+    auto count = 0;
+
+    auto syms = getSyms(symf);
+
+    while (!l0.empty && count < 1_000_000)
+    {
+        auto con0 = unpack(l0.front);
+        con0.expand(syms);
+
+        if (full)
+        {
+            out0.writefln("%.8X: %s (%s+0x%X)", con0.addr, X86Disassemble(con0.inst.ptr), con0.sym, con0.off);
+        }
+        else if (con0.addr < 0x400_000 || con0.addr > 0x500_000 && u)
+        {
+        }
+        else if (con0.sym == "__Dmain")
+        {
+            full = true;
+            count++;
+        }
+        else if (lastbase != con0.addr - con0.off)
+        {
+            u = con0.sym == "__Unknown__";
+            out0.writefln("%.8X: %s (%s+0x%X)", con0.addr, X86Disassemble(con0.inst.ptr), con0.sym, con0.off);
+            lastbase = con0.addr - con0.off;
+        }
+
+        l0.popFront();
+    }
+}
+
+struct context
+{
+    uint addr;
+    ubyte[16] inst;
+    uint off;
+    string sym;
+    void expand(string[uint] syms)
+    {
+        sym = "__Unknown__";
+        auto p = addr;
+        while (p >= 0x400000 && p <= 0x500000 && p !in syms)
+            p--;
+        if (p in syms)
+            sym = syms[p];
+        off = addr - p;
+    }
+}
+
+context unpack(char[] l)
+{
+    auto v = split(l);
+    context c;
+    with (c)
+    {
+        scope(failure) writeln(v);
+        addr = to!uint(v[0], 16);
+        foreach(i, ref b; inst) b = to!ubyte(v[1][i*2..i*2+2], 16);
+    }
+    return c;
 }
