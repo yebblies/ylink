@@ -1,10 +1,9 @@
 
-extern int global_shared;
-int global_tls;
+#include <stdio.h>
 
 int main()
 {
-    static int static_shared;
-    __tls static int static_tls;
+    printf("Hello\n");
+    printf("Hello %d\n", 137);
     return 0;
 }

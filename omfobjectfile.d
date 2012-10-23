@@ -634,7 +634,7 @@ public:
                             // self-relative
                             //enforce(baseAddress == 0);
                             debug(fixup) writeln("Relative");
-                            baseAddress = defSection.base + offset + 4;
+                            baseAddress = defSection.base + defOffset + offset + 4;
                         }
                         else
                         {

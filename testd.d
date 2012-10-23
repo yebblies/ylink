@@ -31,9 +31,17 @@ int main()
     return c;
 }*/
 
-import std.stdio;
+import std.stdio, std.conv;
 
-void main()
+void main(string[] args)
 {
-    writeln("Hello!");
+    try
+    {
+        auto x = to!int(args[1]);
+        writeln(x);
+    }
+    catch
+    {
+       writeln("Or not...");
+    }
 }
