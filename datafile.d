@@ -12,7 +12,7 @@ public:
     this(string filename)
     {
         this.filename = filename;
-        this.data = cast(immutable(ubyte)[])read(filename);
+        this.data = cast(immutable(ubyte)[]).read(filename);
     }
     this(DataFile other, size_t start)
     {
@@ -38,6 +38,12 @@ public:
         auto d = data[pos..pos+4];
         pos += 4;
         return getDwordLE(d);
+    }
+    T read(T)()
+    {
+        auto d = data[pos..pos+T.sizeof];
+        pos += T.sizeof;
+        return (cast(T[])d)[0];
     }
     bool empty()
     {

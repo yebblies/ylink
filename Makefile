@@ -12,6 +12,9 @@ TESTOBJ=testc.obj
 MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d
 
+PEDUMP=pedump.exe
+PEDUMPSRC=pedump.d coffdef.d datafile.d
+
 #DEBUGFLAGS=-debug=fixup -debug=OMFDATA
 DEBUGFLAGS=-debug=OMFDEBUG -debug=OMFDATA
 #DEBUGFLAGS=
@@ -53,6 +56,15 @@ p0.txt p1.txt: $(YLINK) $(DEBLINK) testd.exe teste.exe testd.sym teste.sym
 
 test: $(DEBDUMP) p0.txt p1.txt
 	debdump
+
+$(PEDUMP): $(PEDUMPSRC)
+	dmd -of$(PEDUMP) $(PEDUMPSRC)
+
+dump: pe0.txt pe1.txt
+
+pe0.txt pe1.txt: $(PEDUMP) testd.exe teste.exe
+	$(PEDUMP) testd.exe -of pe0.txt
+	$(PEDUMP) teste.exe -of pe1.txt
 
 clean:
 	-del *.exe
