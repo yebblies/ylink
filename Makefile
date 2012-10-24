@@ -7,13 +7,14 @@ DEBLINKSRC=deblink.d windebug.d x86dis.d
 DEBDUMP=debdump.exe
 DEBDUMPSRC=debdump.d x86dis.d
 
-TESTOBJ=testd.obj
+TESTOBJ=testc.obj
 
 MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d
 
 #DEBUGFLAGS=-debug=fixup -debug=OMFDATA
-DEBUGFLAGS=
+DEBUGFLAGS=-debug=OMFDEBUG -debug=OMFDATA
+#DEBUGFLAGS=
 
 default: test
 
@@ -29,11 +30,11 @@ $(DEBDUMP): $(DEBDUMPSRC)
 $(MAP2SYM): $(MAP2SYMSRC)
 	dmd -of$(MAP2SYM) $(MAP2SYMSRC)
 
-#testd.obj: testd.c
-#	dmc -c testd.c
+testc.obj: testc.c
+	dmc -c testc.c -g
 
 testd.obj: testd.d
-	dmd -c testd.d
+	dmd -c testd.d -g
 
 testd.exe testd.map: $(TESTOBJ)
 	link /MAP $(TESTOBJ),testd.exe

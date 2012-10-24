@@ -46,7 +46,7 @@ public:
     }
     override void loadSymbols(SymbolTable xsymtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
     {
-        //writeln("OMF Object file: ", f.filename);
+        debug(OMFDATA) writeln("OMF Object file: ", f.filename);
 
         symtab = new SymbolTable(xsymtab);
         objects.append(this);
@@ -62,7 +62,7 @@ public:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
                 sourcefile = r.data[1..$];
-                //writeln("Module: ", cast(string)r.data[1..$]);
+                debug(OMFDATA) writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
             case OmfRecordType.LNAMES:
@@ -391,8 +391,10 @@ public:
             case OmfRecordType.LIDATA32:
             case OmfRecordType.FIXUPP16:
             case OmfRecordType.FIXUPP32:
-            case OmfRecordType.LINNUM:
-            case OmfRecordType.LINSYM:
+            case OmfRecordType.LINNUM16:
+            case OmfRecordType.LINNUM32:
+            case OmfRecordType.LINSYM16:
+            case OmfRecordType.LINSYM32:
                 // Data definitions are skipped in the first pass
                 break;
             case OmfRecordType.MODEND16:
@@ -445,6 +447,7 @@ public:
     }
     override void loadData(uint tlsBase)
     {
+        debug(OMFDATA) writeln("OMF Object file: ", f.filename);
         f.seek(0);
         auto modend = false;
 
@@ -463,6 +466,7 @@ public:
             case OmfRecordType.THEADR:
                 auto len = r.data[0];
                 enforce(len == r.data.length - 1, "Corrupt THEADR record");
+                sourcefile = r.data[1..$];
                 debug(OMFDATA) writeln("Module: ", cast(string)r.data[1..$]);
                 break;
             case OmfRecordType.LLNAMES:
@@ -657,9 +661,10 @@ public:
                             (cast(uint[])xdata[offset..offset+4])[0] += targetAddress - tlsBase;
                             break;
                         case 11: // seg-offset
-                            assert(0);
                             debug(fixup) writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
-                            enforce(offset + 5 <= xdata.length);
+                            enforce(offset + 6 <= xdata.length);
+                            (cast(ushort[])xdata[offset..offset+2])[0] = 0;
+                            (cast(uint[])xdata[offset+2..offset+6])[0] = targetAddress - baseAddress;
                             break;
                         default:
                             enforce(false, "Only some weirdly selected and undocumented offset fixups are supported");
@@ -669,13 +674,36 @@ public:
                 }
                 enforce(data.length == 0, "Corrupt FIXUPP record");
                 break;
-            case OmfRecordType.LINNUM:
-                writeln("LINNUM");
-                assert(0);
+            case OmfRecordType.LINNUM16:
+            case OmfRecordType.LINNUM32:
+                auto off16 = (r.type == OmfRecordType.LINNUM16);
+                debug(OMFDEBUG) writeln("LINNUM");
+                auto baseGroup = getIndex(data);
+                enforce(baseGroup <= groups.length, "Invalid group index");
+                assert(baseGroup == 0);
+                auto baseSeg = getIndex(data);
+                enforce(baseSeg && baseSeg <= sections.length, "Invalid section index");
+                while (data.length)
+                {
+                    auto linnum = getWordLE(data);
+                    auto offset = off16 ? getWordLE(data) : getDwordLE(data);
+                    writeln(cast(string)sourcefile, "(", linnum, "): ", cast(string)sections[baseSeg-1].name, "+", offset);
+                }
                 break;
-            case OmfRecordType.LINSYM:
-                writeln("LINSYM");
-                assert(0);
+            case OmfRecordType.LINSYM16:
+            case OmfRecordType.LINSYM32:
+                auto off16 = (r.type == OmfRecordType.LINSYM16);
+                debug(OMFDEBUG) writeln("LINSYM");
+                auto flags = getByte(data);
+                auto name = getIndex(data);
+                enforce(name <= names.length, "Invalid name index");
+                while (data.length)
+                {
+                    auto linnum = getWordLE(data);
+                    auto offset = off16 ? getWordLE(data) : getDwordLE(data);
+                    writeln(cast(string)sourcefile, "(", linnum, "): _TEXT$", cast(string)names[name-1], "+", offset);
+                }
+                assert(!flags);
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:

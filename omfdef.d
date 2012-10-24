@@ -16,7 +16,8 @@ enum OmfRecordType
     EXTDEF, // External Names Definition Record
     PUBDEF16, // Public Names Definition Record
     PUBDEF32, // Public Names Definition Record
-    LINNUM, // Line Numbers Record
+    LINNUM16, // Line Numbers Record
+    LINNUM32, // Line Numbers Record
     LNAMES, // List of Names Record
     SEGDEF16, // Segment Definition Record
     SEGDEF32, // Segment Definition Record
@@ -35,7 +36,8 @@ enum OmfRecordType
     CEXTDEF, // COMDAT External Names Definition Record
     COMDAT16, // Initialized Communal Data Record
     COMDAT32, // Initialized Communal Data Record
-    LINSYM, // Symbol Line Numbers Record
+    LINSYM16, // Symbol Line Numbers Record
+    LINSYM32, // Symbol Line Numbers Record
     ALIAS, // Alias Definition Record
     NBKPAT, // Named Backpatch Record
     LLNAMES, // Local Logical Names Definition Record
@@ -68,8 +70,8 @@ struct OmfRecord
         case 0x8C: return EXTDEF;
         case 0x90: return PUBDEF16;
         case 0x91: return PUBDEF32;
-        case 0x94:
-        case 0x95: return LINNUM;
+        case 0x94: return LINNUM16;
+        case 0x95: return LINNUM32;
         case 0x96: return LNAMES;
         case 0x98: return SEGDEF16;
         case 0x99: return SEGDEF32;
@@ -90,8 +92,8 @@ struct OmfRecord
         case 0xBC: return CEXTDEF;
         case 0xC2: return COMDAT16;
         case 0xC3: return COMDAT32;
-        case 0xC4:
-        case 0xC5: return LINSYM;
+        case 0xC4: return LINSYM16;
+        case 0xC5: return LINSYM32;
         case 0xC6: return ALIAS;
         case 0xC8:
         case 0xC9: return NBKPAT;
