@@ -529,81 +529,6 @@ void dumpType(ref File of, DataFile f)
     }
 }
 
-string decodeCVType(ushort typeind)
-{
-    if ((typeind & 0xF000) != 0)
-        return format("0x%.4X", typeind);
-
-    auto mode = (typeind >> 8) & 0x7;
-    auto type = (typeind >> 4) & 0xF;
-    auto size = typeind & 0x7;
-
-    assert(mode == 0 || mode == 2 || mode == 4, "Unknown CV4 type mode: 0x" ~ to!string(mode, 16));
-    auto pointer = (mode != 0) ? " *" : "";
-    switch (type)
-    {
-    case 0x00:
-        switch (size)
-        {
-        case 0x03: return "void" ~ pointer;
-        default: assert(0);
-        }
-    case 0x01:
-        switch (size)
-        {
-        case 0x00: return "byte" ~ pointer;
-        case 0x01: return "short" ~ pointer;
-        case 0x02: return "c_long" ~ pointer;
-        case 0x03: return "long" ~ pointer;
-        default: assert(0);
-        }
-    case 0x02:
-        switch (size)
-        {
-        case 0x00: return "ubyte" ~ pointer;
-        case 0x01: return "ushort" ~ pointer;
-        case 0x02: return "c_ulong" ~ pointer;
-        case 0x03: return "ulong" ~ pointer;
-        default: assert(0);
-        }
-    case 0x03:
-        switch (size)
-        {
-        case 0x00: return "bool" ~ pointer;
-        default: assert(0);
-        }
-    case 0x04:
-        switch (size)
-        {
-        case 0x00: return "float" ~ pointer;
-        case 0x01: return "double" ~ pointer;
-        case 0x02: return "real" ~ pointer;
-        default: assert(0);
-        }
-    case 0x05:
-        switch (size)
-        {
-        case 0x00: return "cfloat" ~ pointer;
-        case 0x01: return "cdouble" ~ pointer;
-        case 0x02: return "creal" ~ pointer;
-        default: assert(0);
-        }
-    case 0x06:
-        assert(0);
-    case 0x07:
-        switch (size)
-        {
-        case 0x00: return "char" ~ pointer;
-        case 0x01: return "wchar" ~ pointer;
-        case 0x04: return "int" ~ pointer;
-        case 0x05: return "uint" ~ pointer;
-        default: assert(0);
-        }
-    default:
-        assert(0, "Unknown CV4 type: 0x" ~ to!string(type, 16));
-    }
-}
-
 void dumpTypeLeaf(ref File of, DataFile f)
 {
     auto type = f.read!ushort();
@@ -633,11 +558,42 @@ void dumpTypeLeaf(ref File of, DataFile f)
         of.writefln("\t\tArg list: %s", decodeCVType(arglist));
         break;
 
-    case LF_MODIFIER:
+    case LF_FIELDLIST:
+        of.writeln("\tLF_FIELDLIST");
+        while (dumpFieldLeaf(of, f)) {}
+        break;
+
+    case LF_STRUCTURE:
+        of.writeln("\tLF_STRUCT");
+        auto count = f.read!ushort();
+        auto ftype = f.read!ushort();
+        auto prop = f.read!ushort();
+        auto dlist = f.read!ushort();
+        auto vtbl = f.read!ushort();
+        auto length = f.read!ushort();
+        auto namelen = f.read!ubyte();
+        auto name = f.readBytes(namelen);
+        of.writefln("\t\tName: %s", cast(string)name);
+        of.writefln("\t\tMembers: %d", count);
+        of.writefln("\t\tFields: %s", decodeCVType(ftype));
+        of.writefln("\t\tProperties: %.4X", prop);
+        of.writefln("\t\tDerived: %s", decodeCVType(dlist));
+        of.writefln("\t\tVtbl: %s", decodeCVType(vtbl));
+        of.writefln("\t\tsizeof: %d", length);
+        break;
+
     case LF_POINTER:
+        of.writeln("\tLF_POINTER");
+        auto attr = f.read!ushort();
+        auto ptype = f.read!ushort();
+        of.writefln("\t\ttype: %s", decodeCVType(ptype));
+        of.writefln("\t\tattr: %.4X", attr);
+        assert(attr == 0x0A);
+        break;
+
+    case LF_MODIFIER:
     case LF_ARRAY:
     case LF_CLASS:
-    case LF_STRUCTURE:
     case LF_UNION:
     case LF_ENUM:
     case LF_MFUNCTION:
@@ -657,7 +613,6 @@ void dumpTypeLeaf(ref File of, DataFile f)
     case LF_SKIP:
     case LF_DEFARG:
     case LF_LIST:
-    case LF_FIELDLIST:
     case LF_DERIVED:
     case LF_BITFIELD:
     case LF_METHODLIST:
@@ -716,10 +671,113 @@ void dumpTypeLeaf(ref File of, DataFile f)
     case LF_PAD13:
     case LF_PAD14:
     case LF_PAD15:
-        assert(0, "Unsupported Symbol type: 0x" ~ to!string(type, 16));
-        break;
+        assert(0, "Unsupported CV4 Type: 0x" ~ to!string(type, 16));
     default:
-        assert(0, "Unknown Symbol type");
+        assert(0, "Unknown CV4 Type: 0x" ~ to!string(type, 16));
+    }
+}
+
+bool dumpFieldLeaf(ref File of, DataFile f)
+{
+    auto type = f.read!ushort();
+    switch (type)
+    {
+    case LF_MEMBER:
+        auto ftype = f.read!ushort();
+        auto attrib = decodeAttrib(f.read!ushort());
+        auto offset = f.read!ushort();
+        auto namelen = f.read!ubyte();
+        auto name = f.readBytes(namelen);
+        of.writefln("\t\tMember: %s (+%s) (%s)", cast(string)name, offset, attrib);
         break;
+    case LF_NOTTRAN:
+        return false;
+    default:
+        assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(type, 16));
+    }
+    auto fix = f.peek!ubyte();
+    if (fix > 0xF0)
+        f.seek(f.tell() + (fix & 0xF));
+    return true;
+}
+
+string decodeAttrib(ushort attrib)
+{
+    return "<<attrib>>";
+}
+
+string decodeCVType(ushort typeind)
+{
+    if ((typeind & 0xF000) != 0)
+        return format("0x%.4X", typeind);
+
+    auto mode = (typeind >> 8) & 0x7;
+    auto type = (typeind >> 4) & 0xF;
+    auto size = typeind & 0x7;
+
+    assert(mode == 0 || mode == 2 || mode == 4, "Unknown CV4 type mode: 0x" ~ to!string(mode, 16));
+    auto pointer = (mode != 0) ? " *" : "";
+    switch (type)
+    {
+    case 0x00:
+        switch (size)
+        {
+        case 0x00: return "No type";
+        case 0x03: return "void" ~ pointer;
+        default: assert(0);
+        }
+    case 0x01:
+        switch (size)
+        {
+        case 0x00: return "byte" ~ pointer;
+        case 0x01: return "short" ~ pointer;
+        case 0x02: return "c_long" ~ pointer;
+        case 0x03: return "long" ~ pointer;
+        default: assert(0);
+        }
+    case 0x02:
+        switch (size)
+        {
+        case 0x00: return "ubyte" ~ pointer;
+        case 0x01: return "ushort" ~ pointer;
+        case 0x02: return "c_ulong" ~ pointer;
+        case 0x03: return "ulong" ~ pointer;
+        default: assert(0);
+        }
+    case 0x03:
+        switch (size)
+        {
+        case 0x00: return "bool" ~ pointer;
+        default: assert(0);
+        }
+    case 0x04:
+        switch (size)
+        {
+        case 0x00: return "float" ~ pointer;
+        case 0x01: return "double" ~ pointer;
+        case 0x02: return "real" ~ pointer;
+        default: assert(0);
+        }
+    case 0x05:
+        switch (size)
+        {
+        case 0x00: return "cfloat" ~ pointer;
+        case 0x01: return "cdouble" ~ pointer;
+        case 0x02: return "creal" ~ pointer;
+        default: assert(0);
+        }
+    case 0x06:
+        assert(0);
+    case 0x07:
+        switch (size)
+        {
+        case 0x00: return "char" ~ pointer;
+        case 0x01: return "wchar" ~ pointer;
+        case 0x04: return "int" ~ pointer;
+        case 0x05: return "uint" ~ pointer;
+        default: assert(0);
+        }
+    default:
+        assert(0, "Unknown CV4 type: 0x" ~ to!string(type, 16));
     }
 }

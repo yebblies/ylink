@@ -45,6 +45,11 @@ public:
         pos += T.sizeof;
         return (cast(T[])d)[0];
     }
+    T peek(T)()
+    {
+        auto d = data[pos..pos+T.sizeof];
+        return (cast(T[])d)[0];
+    }
     bool empty()
     {
         return pos == data.length;
