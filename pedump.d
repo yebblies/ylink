@@ -529,6 +529,81 @@ void dumpType(ref File of, DataFile f)
     }
 }
 
+string decodeCVType(ushort typeind)
+{
+    if ((typeind & 0xF000) != 0)
+        return format("0x%.4X", typeind);
+
+    auto mode = (typeind >> 8) & 0x7;
+    auto type = (typeind >> 4) & 0xF;
+    auto size = typeind & 0x7;
+
+    assert(mode == 0 || mode == 2 || mode == 4, "Unknown CV4 type mode: 0x" ~ to!string(mode, 16));
+    auto pointer = (mode != 0) ? " *" : "";
+    switch (type)
+    {
+    case 0x00:
+        switch (size)
+        {
+        case 0x03: return "void" ~ pointer;
+        default: assert(0);
+        }
+    case 0x01:
+        switch (size)
+        {
+        case 0x00: return "byte" ~ pointer;
+        case 0x01: return "short" ~ pointer;
+        case 0x02: return "c_long" ~ pointer;
+        case 0x03: return "long" ~ pointer;
+        default: assert(0);
+        }
+    case 0x02:
+        switch (size)
+        {
+        case 0x00: return "ubyte" ~ pointer;
+        case 0x01: return "ushort" ~ pointer;
+        case 0x02: return "c_ulong" ~ pointer;
+        case 0x03: return "ulong" ~ pointer;
+        default: assert(0);
+        }
+    case 0x03:
+        switch (size)
+        {
+        case 0x00: return "bool" ~ pointer;
+        default: assert(0);
+        }
+    case 0x04:
+        switch (size)
+        {
+        case 0x00: return "float" ~ pointer;
+        case 0x01: return "double" ~ pointer;
+        case 0x02: return "real" ~ pointer;
+        default: assert(0);
+        }
+    case 0x05:
+        switch (size)
+        {
+        case 0x00: return "cfloat" ~ pointer;
+        case 0x01: return "cdouble" ~ pointer;
+        case 0x02: return "creal" ~ pointer;
+        default: assert(0);
+        }
+    case 0x06:
+        assert(0);
+    case 0x07:
+        switch (size)
+        {
+        case 0x00: return "char" ~ pointer;
+        case 0x01: return "wchar" ~ pointer;
+        case 0x04: return "int" ~ pointer;
+        case 0x05: return "uint" ~ pointer;
+        default: assert(0);
+        }
+    default:
+        assert(0, "Unknown CV4 type: 0x" ~ to!string(type, 16));
+    }
+}
+
 void dumpTypeLeaf(ref File of, DataFile f)
 {
     auto type = f.read!ushort();
@@ -541,21 +616,21 @@ void dumpTypeLeaf(ref File of, DataFile f)
         foreach(i; 0..count)
         {
             auto typind = f.read!ushort();
-            of.writefln("\t\t%d", typind);
+            of.writefln("\t\t%s", decodeCVType(typind));
         }
         break;
 
     case LF_PROCEDURE:
         of.writeln("\tLF_PROCEDURE");
         auto rettype = f.read!ushort();
-        auto cc = f.read!ushort();
+        auto cc = f.read!ubyte();
         auto reserved = f.read!ubyte();
         auto argcount = f.read!ushort();
         auto arglist = f.read!ushort();
-        of.writefln("\t\tReturn type: %d", rettype);
+        of.writefln("\t\tReturn type: %s", decodeCVType(rettype));
         of.writefln("\t\tCalling convention: %d", cc);
         of.writefln("\t\tArg count: %d", argcount);
-        of.writefln("\t\tArg list: %d", arglist);
+        of.writefln("\t\tArg list: %s", decodeCVType(arglist));
         break;
 
     case LF_MODIFIER:
