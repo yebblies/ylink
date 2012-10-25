@@ -13,11 +13,11 @@ MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d
 
 PEDUMP=pedump.exe
-PEDUMPSRC=pedump.d coffdef.d datafile.d
+PEDUMPSRC=pedump.d coffdef.d datafile.d codeview.d
 
 #DEBUGFLAGS=-debug=fixup -debug=OMFDATA
-DEBUGFLAGS=-debug=OMFDEBUG -debug=OMFDATA
-#DEBUGFLAGS=
+#DEBUGFLAGS=-debug=OMFDEBUG -debug=OMFDATA
+DEBUGFLAGS=
 
 default: test
 
@@ -40,7 +40,7 @@ testd.obj: testd.d
 	dmd -c testd.d -g
 
 testd.exe testd.map: $(TESTOBJ)
-	link /MAP $(TESTOBJ),testd.exe
+	link /MAP $(TESTOBJ),testd.exe/CO/NOI
 
 teste.exe teste.map: $(TESTOBJ) $(YLINK)
 	$(YLINK) $(TESTOBJ) -o teste.exe -m

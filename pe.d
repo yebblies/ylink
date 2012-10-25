@@ -33,6 +33,7 @@ void buildPE(string filename, Segment[SegmentType] segments, SymbolTable symtab)
         Characteristics |= IMAGE_FILE_BYTES_REVERSED_LO;
         Characteristics |= IMAGE_FILE_32BIT_MACHINE;
         Characteristics |= IMAGE_FILE_DEBUG_STRIPPED;
+        Characteristics |= IMAGE_FILE_BYTES_REVERSED_HI;
     }
     f.rawWrite((&ch)[0..1]);
 

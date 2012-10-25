@@ -57,6 +57,11 @@ public:
     {
         return pos;
     }
+    void alignto(size_t num)
+    {
+        pos += num-1;
+        pos &= ~(num-1);
+    }
     immutable(ubyte)[] readBytes(size_t n)
     {
         auto d = data[pos..pos+n];

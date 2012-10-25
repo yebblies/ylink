@@ -8,6 +8,7 @@ import std.path;
 
 import coffdef;
 import datafile;
+import codeview;
 
 void main(string[] args)
 {
@@ -62,6 +63,8 @@ void main(string[] args)
     if (header.Characteristics & IMAGE_FILE_UP_SYSTEM_ONLY)          of.writeln("\tUniprocessor only");
     if (header.Characteristics & IMAGE_FILE_BYTES_REVERSED_HI)       of.writeln("\tBytes reversed hi");
 
+    of.writeln();
+
     auto opthead = f.read!OptionalHeader();
     assert(opthead.Magic == PE_MAGIC);
     of.writeln("Coff Optional Header found");
@@ -102,6 +105,8 @@ void main(string[] args)
     of.writefln("Loader flags:          0x%.8X", opthead.LoaderFlags);
     of.writefln("Number of directories: 0x%.8X", opthead.NumberOfRvaAndSizes);
 
+    of.writeln();
+
     assert(opthead.NumberOfRvaAndSizes == 0x10);
 
     auto ddnames = ["ExportTable", "ImportTable", "ResourceTable", "ExceptionTable", "CertificateTable", "BaseRelocationTable", "Debug", "Architecture", "GlobalPtr", "TLSTable", "LoadConfigTable", "BoundImportTable", "ImportAddressTable", "DelayImportDescriptor", "CLRRuntimeHeader", "Reserved"];
@@ -113,13 +118,19 @@ void main(string[] args)
         {
             of.writeln("Data directory: ", ddnames[i]);
             of.writefln("\tVirtual address: 0x%.8X", dd.VirtualAddress);
-            of.writefln("\tSize:             0x%.8X", dd.Size);
+            of.writefln("\tSize:            0x%.8X", dd.Size);
         }
     }
 
-    foreach(i; 0..header.NumberOfSections)
+    of.writeln();
+
+    auto secheadoffset = f.tell();
+
+    auto secheads = new SectionHeader[](header.NumberOfSections);
+
+    foreach(ref sechead; secheads)
     {
-        auto sechead = f.read!SectionHeader();
+        sechead = f.read!SectionHeader();
         auto name = sechead.Name[];
         while (name.back == '\0')
             name.popBack();
@@ -166,4 +177,315 @@ void main(string[] args)
         if (sechead.Characteristics & IMAGE_SCN_MEM_READ)               of.writeln("\t\tMemory - Read");
         if (sechead.Characteristics & IMAGE_SCN_MEM_WRITE)              of.writeln("\t\tMemory - Write");
     }
+
+    of.writeln();
+
+    if (dds.Debug.VirtualAddress && dds.Debug.Size)
+    {
+        of.writeln("Has a debug directory");
+        SectionHeader debughead;
+        foreach(ref sechead; secheads)
+            if (sechead.VirtualAddress == dds.Debug.VirtualAddress)
+                debughead = sechead;
+        assert(debughead.VirtualAddress == dds.Debug.VirtualAddress);
+        f.seek(debughead.PointerToRawData);
+
+        auto dd = f.read!DebugDirectory();
+        assert(dd.Characteristics == 0);
+        assert(dd.Type == IMAGE_DEBUG_TYPE_CODEVIEW);
+        assert(dd.MajorVersion == 0);
+        assert(dd.MinorVersion == 0);
+        of.writefln("Debug info type: Codeview %d.%d", dd.MajorVersion, dd.MinorVersion);
+        of.writefln("Virtual address: 0x%.8X", dd.AddressOfRawData);
+        of.writefln("File address:    0x%.8X", dd.PointerToRawData);
+        of.writefln("Data size:       0x%.8X", dd.SizeOfData);
+
+        if (dd.SizeOfData == 0)
+        {
+            of.writeln("Debug section empty");
+        }
+        else
+        {
+            of.writeln();
+            dumpCodeview(of, f, dd.PointerToRawData);
+        }
+    }
+}
+
+void dumpCodeview(ref File of, DataFile f, uint lfaBase)
+{
+    f.seek(lfaBase);
+    auto cvh = f.read!uint();
+    assert(cvh == CV41_SIG, "Only CV41 is supported");
+    of.writefln("Found CV41 debug information");
+    auto lfoDir = f.read!uint();
+
+    f.seek(lfaBase + lfoDir);
+    auto dirheader = f.read!CV_DIRHEADER();
+    assert(dirheader.cbDirHeader == CV_DIRHEADER.sizeof);
+    assert(dirheader.cbDirEntry == CV_DIRENTRY.sizeof);
+    assert(dirheader.lfoNextDir == 0);
+    assert(dirheader.flags == 0);
+    of.writefln("Found %d subsections", dirheader.cDir);
+
+    foreach(i; 0..dirheader.cDir)
+    {
+        f.seek(lfaBase + lfoDir + CV_DIRHEADER.sizeof + CV_DIRENTRY.sizeof * i);
+        auto entry = f.read!CV_DIRENTRY();
+        of.writefln("Entry: 0x%.4X 0x%.4X 0x%.8X 0x%.8X", entry.subsection, entry.iMod, entry.lfo, entry.cb);
+        f.seek(lfaBase + entry.lfo);
+        switch(entry.subsection)
+        {
+        case sstModule:
+            auto ovlNumber = f.read!ushort();
+            assert(ovlNumber == 0, "Overlays are not supported");
+            auto iLib = f.read!ushort();
+            auto cSeg = f.read!ushort();
+            auto Style = f.read!ushort();
+            assert(Style == ('V' << 8 | 'C'), "Only CV is supported");
+            foreach(j; 0..cSeg)
+            {
+                auto Seg = f.read!ushort();
+                auto pad = f.read!ushort();
+                auto offset = f.read!uint();
+                auto cbSeg = f.read!uint();
+            }
+            auto namelen = f.read!ubyte();
+            auto name = f.readBytes(namelen);
+            of.writefln("CV sstModule: %s", cast(string)name);
+            if (iLib)
+                of.writefln("\tFrom lib #%d", iLib);
+            break;
+        case sstSrcModule:
+            of.writeln("CV sstSrcModule");
+
+            // Module header
+            auto cFile = f.read!ushort();
+            auto cSeg = f.read!ushort();
+            of.writefln("\t%d files", cFile);
+            of.writefln("\t%d segments", cSeg);
+            auto filebase = new uint[](cFile);
+            foreach(j; 0..cFile)
+                filebase[j] = f.read!uint();
+            auto segstart = new uint[](cSeg);
+            auto segend = new uint[](cSeg);
+            auto segindex = new ushort[](cSeg);
+            foreach(j; 0..cSeg)
+            {
+                segstart[j] = f.read!uint();
+                segend[j] = f.read!uint();
+            }
+            foreach(j; 0..cSeg)
+                segindex[j] = f.read!ushort();
+            f.alignto(4);
+
+            // File Info
+            foreach(j, fileoff; filebase)
+            {
+                of.writefln("File %d at 0x%.8X", j, fileoff);
+                f.seek(lfaBase + entry.lfo + fileoff);
+                auto xcSeg = f.read!ushort();
+                assert(f.read!ushort() == 0);
+                auto baseSrcLn = cast(immutable uint[])f.readBytes(uint.sizeof * xcSeg);
+                auto startend = cast(immutable uint[2][])f.readBytes((uint[2]).sizeof * xcSeg);
+                auto namelen = f.read!ubyte();
+                auto name = f.readBytes(namelen);
+                of.writeln("\tName: ", cast(string)name);
+                of.writefln("\tLine maps: %(0x%.8X, %)", baseSrcLn);
+                of.writefln("\tSegs: %(%(0x%.8X..%), %)", startend);
+
+                foreach(k, off; baseSrcLn)
+                {
+                    f.seek(lfaBase + entry.lfo + off);
+                    of.writefln("\tLine numbers in segment %d:", k);
+                    auto Segi = f.read!ushort();
+                    auto cPair = f.read!ushort();
+                    auto offset = cast(uint[])f.readBytes(uint.sizeof*cPair);
+                    auto linenum = cast(ushort[])f.readBytes(ushort.sizeof*cPair);
+                    foreach(l; 0..cPair)
+                        of.writefln("\t\t0x%.8X: %d", offset[l], linenum[l]);
+                }
+            }
+
+            foreach(j; 0..cSeg)
+            {
+                of.writefln("Seg %d (%d) at 0x%.8X..0x%.8X", j, segindex[j], segstart[j], segend[j]);
+            }
+            break;
+        case sstLibraries:
+            of.writeln("CV Library list:");
+            auto len = f.read!ubyte();
+            assert(len == 0);
+            auto count = 1;
+            while ((len = f.read!ubyte()) != 0)
+            {
+                of.writefln("\tLib #%d: %s", count, cast(string)f.readBytes(len));
+                count++;
+            }
+            break;
+        case sstGlobalPub:
+            auto symhash = f.read!ushort();
+            auto addrhash = f.read!ushort();
+            of.writefln("CV Global Public:");
+            of.writefln("\tSymbol hash: 0x%.4X", symhash);
+            of.writefln("\tAddress hash: 0x%.4X", addrhash);
+            auto cbSymbol = f.read!uint();
+            auto cbSymHash = f.read!uint();
+            auto cbAddrHash = f.read!uint();
+            of.writefln("\tSymbols: 0x%X bytes", cbSymbol);
+            of.writefln("\tcbSymHash: 0x%X bytes", cbSymHash);
+            of.writefln("\tcbAddrHash: 0x%X bytes", cbAddrHash);
+            auto symstart = f.tell();
+            dumpSymbols(of, f, symstart, cbSymbol);
+            break;
+        case sstFileIndex:
+            break;
+        case sstSegMap:
+            break;
+        case sstSegName:
+            break;
+        case sstAlignSym:
+            break;
+        case sstGlobalSym:
+            break;
+        case sstGlobalTypes:
+            break;
+        default:
+            writefln("Unhandled CV subsection type 0x%.3X", entry.subsection);
+            assert(0);
+        }
+    }
+}
+
+void dumpSymbols(ref File of, DataFile f, uint symstart, uint cbSymbol)
+{
+    f.seek(symstart);
+    while(f.tell() < symstart + cbSymbol)
+    {
+        f.alignto(4);
+        auto len = f.read!ushort();
+        auto symtype = f.read!ushort();
+        switch (symtype)
+        {
+        case S_PUB32:
+            of.writeln("Symbol: S_PUB32");
+            auto offset = f.read!uint();
+            auto segment = f.read!ushort();
+            auto type = f.read!ushort();
+            auto namelen = f.read!ubyte();
+            auto name = f.readBytes(namelen);
+            of.writefln("Seg %.4X + 0x%.8X: %s (%d)", segment, offset, cast(string)name, type);
+            break;
+        case S_ALIGN:
+            of.writeln("Symbol: S_ALIGN");
+            f.seek(f.tell() + len - 2);
+            break;
+
+        case S_COMPILE:
+            of.writeln("Symbol: S_COMPILE");
+            assert(0);
+        case S_REGISTER:
+            of.writeln("Symbol: S_REGISTER");
+            assert(0);
+        case S_CONSTANT:
+            of.writeln("Symbol: S_CONSTANT");
+            assert(0);
+        case S_UDT:
+            of.writeln("Symbol: S_UDT");
+            assert(0);
+        case S_SSEARCH:
+            of.writeln("Symbol: S_SSEARCH");
+            assert(0);
+        case S_END:
+            of.writeln("Symbol: S_END");
+            assert(0);
+        case S_SKIP:
+            of.writeln("Symbol: S_SKIP");
+            assert(0);
+        case S_CVRESERVE:
+            of.writeln("Symbol: S_CVRESERVE");
+            assert(0);
+        case S_OBJNAME:
+            of.writeln("Symbol: S_OBJNAME");
+            assert(0);
+        case S_ENDARG:
+            of.writeln("Symbol: S_ENDARG");
+            assert(0);
+        case S_COBOLUDT:
+            of.writeln("Symbol: S_COBOLUDT");
+            assert(0);
+        case S_MANYREG:
+            of.writeln("Symbol: S_MANYREG");
+            assert(0);
+        case S_RETURN:
+            of.writeln("Symbol: S_RETURN");
+            assert(0);
+        case S_ENTRYTHIS:
+            of.writeln("Symbol: S_ENTRYTHIS");
+            assert(0);
+
+        case S_BPREL32:
+            of.writeln("Symbol: S_BPREL32");
+            assert(0);
+        case S_LDATA32:
+            of.writeln("Symbol: S_LDATA32");
+            assert(0);
+        case S_GDATA32:
+            of.writeln("Symbol: S_GDATA32");
+            assert(0);
+        case S_LPROC32:
+            of.writeln("Symbol: S_LPROC32");
+            assert(0);
+        case S_GRPOC32:
+            of.writeln("Symbol: S_GRPOC32");
+            assert(0);
+        case S_THUNK32:
+            of.writeln("Symbol: S_THUNK32");
+            assert(0);
+        case S_BLOCK32:
+            of.writeln("Symbol: S_BLOCK32");
+            assert(0);
+        case S_VFTPATH32:
+            of.writeln("Symbol: S_VFTPATH32");
+            assert(0);
+        case S_REGREL32:
+            of.writeln("Symbol: S_REGREL32");
+            assert(0);
+        case S_LTHREAD32:
+            of.writeln("Symbol: S_LTHREAD32");
+            assert(0);
+        case S_GTHREAD32:
+            of.writeln("Symbol: S_GTHREAD32");
+            assert(0);
+
+        case S_PROCREF:
+            of.writeln("Symbol: S_PROCREF");
+            assert(0);
+        case S_DATAREF:
+            of.writeln("Symbol: S_DATAREF");
+            assert(0);
+
+        case S_BPREL16:
+        case S_LDATA16:
+        case S_GDATA16:
+        case S_PUB16:
+        case S_LPROC16:
+        case S_GPROC16:
+        case S_THUNK16:
+        case S_BLOCK16:
+        case S_WITH16:
+        case S_LABEL16:
+        case S_CEXMODEL16:
+        case S_VFTPATH16:
+        case S_REGREL16:
+        case S_LPROCMIPS:
+        case S_GPROCMIPS:
+            assert(0, "Unsupported Symbol type");
+            break;
+        default:
+            assert(0, "Unknown Symbol type");
+            break;
+        }
+    }
+    assert(f.tell() == symstart + cbSymbol);
 }
