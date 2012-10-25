@@ -323,20 +323,55 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
                 count++;
             }
             break;
-        case sstGlobalPub:
+        case sstGlobalPub: // List of all public symbols
             auto symhash = f.read!ushort();
             auto addrhash = f.read!ushort();
-            of.writefln("CV Global Public:");
-            of.writefln("\tSymbol hash: 0x%.4X", symhash);
-            of.writefln("\tAddress hash: 0x%.4X", addrhash);
+            of.writefln("CV Global Public Symbols:");
+            //of.writefln("\tSymbol hash: 0x%.4X", symhash);
+            //of.writefln("\tAddress hash: 0x%.4X", addrhash);
             auto cbSymbol = f.read!uint();
             auto cbSymHash = f.read!uint();
             auto cbAddrHash = f.read!uint();
-            of.writefln("\tSymbols: 0x%X bytes", cbSymbol);
-            of.writefln("\tcbSymHash: 0x%X bytes", cbSymHash);
-            of.writefln("\tcbAddrHash: 0x%X bytes", cbAddrHash);
+            //of.writefln("\tSymbols: 0x%X bytes", cbSymbol);
+            //of.writefln("\tcbSymHash: 0x%X bytes", cbSymHash);
+            //of.writefln("\tcbAddrHash: 0x%X bytes", cbAddrHash);
             auto symstart = f.tell();
-            dumpSymbols(of, f, symstart, cbSymbol);
+            while(f.tell() < symstart + cbSymbol)
+            {
+                f.alignto(4);
+                dumpSymbol(of, f);
+            }
+            assert(f.tell() == symstart + cbSymbol);
+            break;
+        case sstGlobalSym: // List of all non-public symbols
+            of.writefln("CV Global Symbols:");
+            auto symhash = f.read!ushort();
+            auto addrhash = f.read!ushort();
+            auto cbSymbol = f.read!uint();
+            auto cbSymHash = f.read!uint();
+            auto cbAddrHash = f.read!uint();
+            auto symstart = f.tell();
+            while(f.tell() < symstart + cbSymbol)
+            {
+                f.alignto(4);
+                dumpSymbol(of, f);
+            }
+            assert(f.tell() == symstart + cbSymbol);
+            break;
+        case sstGlobalTypes:
+            of.writefln("CV Global Types:");
+            auto flags = f.read!uint();
+            assert(flags == 0x00000001);
+            auto cType = f.read!uint();
+            auto offType = new uint[](cType);
+            foreach(j, ref off; offType)
+                off = f.read!uint();
+            auto typestart = f.tell();
+            foreach(j, ref off; offType)
+            {
+                f.seek(typestart + off);
+                dumpType(of, f);
+            }
             break;
         case sstFileIndex:
             break;
@@ -346,10 +381,6 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
             break;
         case sstAlignSym:
             break;
-        case sstGlobalSym:
-            break;
-        case sstGlobalTypes:
-            break;
         default:
             writefln("Unhandled CV subsection type 0x%.3X", entry.subsection);
             assert(0);
@@ -357,135 +388,263 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
     }
 }
 
-void dumpSymbols(ref File of, DataFile f, uint symstart, uint cbSymbol)
+void dumpSymbol(ref File of, DataFile f)
 {
-    f.seek(symstart);
-    while(f.tell() < symstart + cbSymbol)
+    auto len = f.read!ushort();
+    auto symtype = f.read!ushort();
+    switch (symtype)
     {
-        f.alignto(4);
-        auto len = f.read!ushort();
-        auto symtype = f.read!ushort();
-        switch (symtype)
-        {
-        case S_PUB32:
-            of.writeln("Symbol: S_PUB32");
-            auto offset = f.read!uint();
-            auto segment = f.read!ushort();
-            auto type = f.read!ushort();
-            auto namelen = f.read!ubyte();
-            auto name = f.readBytes(namelen);
-            of.writefln("Seg %.4X + 0x%.8X: %s (%d)", segment, offset, cast(string)name, type);
-            break;
-        case S_ALIGN:
-            of.writeln("Symbol: S_ALIGN");
-            f.seek(f.tell() + len - 2);
-            break;
+    case S_PUB32:
+        of.writeln("Symbol: S_PUB32");
+        auto offset = f.read!uint();
+        auto segment = f.read!ushort();
+        auto type = f.read!ushort();
+        auto namelen = f.read!ubyte();
+        auto name = f.readBytes(namelen);
+        of.writefln("Seg %.4X + 0x%.8X: %s (%d)", segment, offset, cast(string)name, type);
+        break;
+    case S_ALIGN:
+        of.writeln("Symbol: S_ALIGN");
+        f.seek(f.tell() + len - 2);
+        break;
+    case S_PROCREF:
+        of.writeln("Symbol: S_PROCREF");
+        auto checksum = f.read!uint();
+        auto offset = f.read!uint();
+        auto mod = f.read!ushort();
+        break;
 
-        case S_COMPILE:
-            of.writeln("Symbol: S_COMPILE");
-            assert(0);
-        case S_REGISTER:
-            of.writeln("Symbol: S_REGISTER");
-            assert(0);
-        case S_CONSTANT:
-            of.writeln("Symbol: S_CONSTANT");
-            assert(0);
-        case S_UDT:
-            of.writeln("Symbol: S_UDT");
-            assert(0);
-        case S_SSEARCH:
-            of.writeln("Symbol: S_SSEARCH");
-            assert(0);
-        case S_END:
-            of.writeln("Symbol: S_END");
-            assert(0);
-        case S_SKIP:
-            of.writeln("Symbol: S_SKIP");
-            assert(0);
-        case S_CVRESERVE:
-            of.writeln("Symbol: S_CVRESERVE");
-            assert(0);
-        case S_OBJNAME:
-            of.writeln("Symbol: S_OBJNAME");
-            assert(0);
-        case S_ENDARG:
-            of.writeln("Symbol: S_ENDARG");
-            assert(0);
-        case S_COBOLUDT:
-            of.writeln("Symbol: S_COBOLUDT");
-            assert(0);
-        case S_MANYREG:
-            of.writeln("Symbol: S_MANYREG");
-            assert(0);
-        case S_RETURN:
-            of.writeln("Symbol: S_RETURN");
-            assert(0);
-        case S_ENTRYTHIS:
-            of.writeln("Symbol: S_ENTRYTHIS");
-            assert(0);
+    case S_COMPILE:
+        of.writeln("Symbol: S_COMPILE");
+        assert(0);
+    case S_REGISTER:
+        of.writeln("Symbol: S_REGISTER");
+        assert(0);
+    case S_CONSTANT:
+        of.writeln("Symbol: S_CONSTANT");
+        assert(0);
+    case S_UDT:
+        of.writeln("Symbol: S_UDT");
+        assert(0);
+    case S_SSEARCH:
+        of.writeln("Symbol: S_SSEARCH");
+        assert(0);
+    case S_END:
+        of.writeln("Symbol: S_END");
+        assert(0);
+    case S_SKIP:
+        of.writeln("Symbol: S_SKIP");
+        assert(0);
+    case S_CVRESERVE:
+        of.writeln("Symbol: S_CVRESERVE");
+        assert(0);
+    case S_OBJNAME:
+        of.writeln("Symbol: S_OBJNAME");
+        assert(0);
+    case S_ENDARG:
+        of.writeln("Symbol: S_ENDARG");
+        assert(0);
+    case S_COBOLUDT:
+        of.writeln("Symbol: S_COBOLUDT");
+        assert(0);
+    case S_MANYREG:
+        of.writeln("Symbol: S_MANYREG");
+        assert(0);
+    case S_RETURN:
+        of.writeln("Symbol: S_RETURN");
+        assert(0);
+    case S_ENTRYTHIS:
+        of.writeln("Symbol: S_ENTRYTHIS");
+        assert(0);
 
-        case S_BPREL32:
-            of.writeln("Symbol: S_BPREL32");
-            assert(0);
-        case S_LDATA32:
-            of.writeln("Symbol: S_LDATA32");
-            assert(0);
-        case S_GDATA32:
-            of.writeln("Symbol: S_GDATA32");
-            assert(0);
-        case S_LPROC32:
-            of.writeln("Symbol: S_LPROC32");
-            assert(0);
-        case S_GRPOC32:
-            of.writeln("Symbol: S_GRPOC32");
-            assert(0);
-        case S_THUNK32:
-            of.writeln("Symbol: S_THUNK32");
-            assert(0);
-        case S_BLOCK32:
-            of.writeln("Symbol: S_BLOCK32");
-            assert(0);
-        case S_VFTPATH32:
-            of.writeln("Symbol: S_VFTPATH32");
-            assert(0);
-        case S_REGREL32:
-            of.writeln("Symbol: S_REGREL32");
-            assert(0);
-        case S_LTHREAD32:
-            of.writeln("Symbol: S_LTHREAD32");
-            assert(0);
-        case S_GTHREAD32:
-            of.writeln("Symbol: S_GTHREAD32");
-            assert(0);
+    case S_BPREL32:
+        of.writeln("Symbol: S_BPREL32");
+        assert(0);
+    case S_LDATA32:
+        of.writeln("Symbol: S_LDATA32");
+        assert(0);
+    case S_GDATA32:
+        of.writeln("Symbol: S_GDATA32");
+        assert(0);
+    case S_LPROC32:
+        of.writeln("Symbol: S_LPROC32");
+        assert(0);
+    case S_GRPOC32:
+        of.writeln("Symbol: S_GRPOC32");
+        assert(0);
+    case S_THUNK32:
+        of.writeln("Symbol: S_THUNK32");
+        assert(0);
+    case S_BLOCK32:
+        of.writeln("Symbol: S_BLOCK32");
+        assert(0);
+    case S_VFTPATH32:
+        of.writeln("Symbol: S_VFTPATH32");
+        assert(0);
+    case S_REGREL32:
+        of.writeln("Symbol: S_REGREL32");
+        assert(0);
+    case S_LTHREAD32:
+        of.writeln("Symbol: S_LTHREAD32");
+        assert(0);
+    case S_GTHREAD32:
+        of.writeln("Symbol: S_GTHREAD32");
+        assert(0);
 
-        case S_PROCREF:
-            of.writeln("Symbol: S_PROCREF");
-            assert(0);
-        case S_DATAREF:
-            of.writeln("Symbol: S_DATAREF");
-            assert(0);
+    case S_DATAREF:
+        of.writeln("Symbol: S_DATAREF");
+        assert(0);
 
-        case S_BPREL16:
-        case S_LDATA16:
-        case S_GDATA16:
-        case S_PUB16:
-        case S_LPROC16:
-        case S_GPROC16:
-        case S_THUNK16:
-        case S_BLOCK16:
-        case S_WITH16:
-        case S_LABEL16:
-        case S_CEXMODEL16:
-        case S_VFTPATH16:
-        case S_REGREL16:
-        case S_LPROCMIPS:
-        case S_GPROCMIPS:
-            assert(0, "Unsupported Symbol type");
-            break;
-        default:
-            assert(0, "Unknown Symbol type");
-            break;
-        }
+    case S_BPREL16:
+    case S_LDATA16:
+    case S_GDATA16:
+    case S_PUB16:
+    case S_LPROC16:
+    case S_GPROC16:
+    case S_THUNK16:
+    case S_BLOCK16:
+    case S_WITH16:
+    case S_LABEL16:
+    case S_CEXMODEL16:
+    case S_VFTPATH16:
+    case S_REGREL16:
+    case S_LPROCMIPS:
+    case S_GPROCMIPS:
+        assert(0, "Unsupported Symbol type");
+        break;
+    default:
+        assert(0, "Unknown Symbol type");
+        break;
     }
-    assert(f.tell() == symstart + cbSymbol);
+}
+
+void dumpType(ref File of, DataFile f)
+{
+    auto len = f.read!ushort();
+    of.writeln("Type:");
+    auto start = f.tell();
+    while (f.tell() < start + len)
+    {
+        dumpTypeLeaf(of, f);
+    }
+}
+
+void dumpTypeLeaf(ref File of, DataFile f)
+{
+    auto type = f.read!ushort();
+    switch (type)
+    {
+    case LF_ARGLIST:
+        of.writeln("\tLF_ARGLIST");
+        auto count = f.read!ushort();
+        of.writefln("\t\t%d args", count);
+        foreach(i; 0..count)
+        {
+            auto typind = f.read!ushort();
+            of.writefln("\t\t%d", typind);
+        }
+        break;
+
+    case LF_PROCEDURE:
+        of.writeln("\tLF_PROCEDURE");
+        auto rettype = f.read!ushort();
+        auto cc = f.read!ushort();
+        auto reserved = f.read!ubyte();
+        auto argcount = f.read!ushort();
+        auto arglist = f.read!ushort();
+        of.writefln("\t\tReturn type: %d", rettype);
+        of.writefln("\t\tCalling convention: %d", cc);
+        of.writefln("\t\tArg count: %d", argcount);
+        of.writefln("\t\tArg list: %d", arglist);
+        break;
+
+    case LF_MODIFIER:
+    case LF_POINTER:
+    case LF_ARRAY:
+    case LF_CLASS:
+    case LF_STRUCTURE:
+    case LF_UNION:
+    case LF_ENUM:
+    case LF_MFUNCTION:
+    case LF_VTSHAPE:
+    case LF_COBOL0:
+    case LF_COBOL1:
+    case LF_BARRAY:
+    case LF_LABEL:
+    case LF_NULL:
+    case LF_NOTTRAN:
+    case LF_DIMARRAY:
+    case LF_VFTPATH:
+    case LF_PRECOMP:
+    case LF_ENDPRECOMP:
+    case LF_OEM:
+
+    case LF_SKIP:
+    case LF_DEFARG:
+    case LF_LIST:
+    case LF_FIELDLIST:
+    case LF_DERIVED:
+    case LF_BITFIELD:
+    case LF_METHODLIST:
+    case LF_DIMCONU:
+    case LF_DIMCONLU:
+    case LF_DIMVARU:
+    case LF_DIMVARLU:
+    case LF_REFSYM:
+
+    case LF_BCLASS:
+    case LF_VBCLASS:
+    case LF_IVBCLASS:
+    case LF_ENUMERATE:
+    case LF_FRIENDFCN:
+    case LF_INDEX:
+    case LF_MEMBER:
+    case LF_STMEMBER:
+    case LF_METHOD:
+    case LF_NESTTYPE:
+    case LF_VFUNCTAB:
+    case LF_FRIENDCLS:
+    case LF_ONEMETHOD:
+    case LF_VFUNCOFF:
+
+    case LF_CHAR:
+    case LF_SHORT:
+    case LF_USHORT:
+    case LF_LONG:
+    case LF_ULONG:
+    case LF_REAL32:
+    case LF_REAL64:
+    case LF_REAL80:
+    case LF_REAL128:
+    case LF_QUADWORD:
+    case LF_UQUADWORD:
+    case LF_REAL48:
+    case LF_COMPLEX32:
+    case LF_COMPLEX64:
+    case LF_COMPLEX80:
+    case LF_COMPLEX128:
+    case LF_VARSTRING:
+
+    case LF_PAD0:
+    case LF_PAD1:
+    case LF_PAD2:
+    case LF_PAD3:
+    case LF_PAD4:
+    case LF_PAD5:
+    case LF_PAD6:
+    case LF_PAD7:
+    case LF_PAD8:
+    case LF_PAD9:
+    case LF_PAD10:
+    case LF_PAD11:
+    case LF_PAD12:
+    case LF_PAD13:
+    case LF_PAD14:
+    case LF_PAD15:
+        assert(0, "Unsupported Symbol type: 0x" ~ to!string(type, 16));
+        break;
+    default:
+        assert(0, "Unknown Symbol type");
+        break;
+    }
 }
