@@ -416,6 +416,13 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
             break;
         case sstSegName:
             of.writefln("CV Segment Names:");
+            auto count = 0;
+            while (f.tell() < lfaBase + entry.lfo + entry.cb)
+            {
+                count++;
+                auto name = f.readZString();
+                of.writefln("\tSegment %d: %s", count, cast(string)name);
+            }
             break;
         case sstAlignSym:
             of.writefln("CV Aligned Symbols:");

@@ -77,6 +77,13 @@ public:
     {
         return readBytes(read!ubyte());
     }
+    immutable(ubyte)[] readZString()
+    {
+        auto save = pos;
+        while(data[pos])
+            pos++;
+        return data[save..pos++];
+    }
 }
 
 ubyte getByte(ref immutable(ubyte)[] d)
