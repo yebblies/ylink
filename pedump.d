@@ -250,8 +250,7 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
                 auto offset = f.read!uint();
                 auto cbSeg = f.read!uint();
             }
-            auto namelen = f.read!ubyte();
-            auto name = f.readBytes(namelen);
+            auto name = f.readPreString();
             of.writefln("CV sstModule: %s", cast(string)name);
             if (iLib)
                 of.writefln("\tFrom lib #%d", iLib);
@@ -288,8 +287,7 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
                 assert(f.read!ushort() == 0);
                 auto baseSrcLn = cast(immutable uint[])f.readBytes(uint.sizeof * xcSeg);
                 auto startend = cast(immutable uint[2][])f.readBytes((uint[2]).sizeof * xcSeg);
-                auto namelen = f.read!ubyte();
-                auto name = f.readBytes(namelen);
+                auto name = f.readPreString();
                 of.writeln("\tName: ", cast(string)name);
                 of.writefln("\tLine maps: %(0x%.8X, %)", baseSrcLn);
                 of.writefln("\tSegs: %(%(0x%.8X..%), %)", startend);
@@ -389,8 +387,7 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
                 foreach(k; 0..cRefCnt[j])
                 {
                     f.seek(nametable + NameRef[p + k]);
-                    auto namelen = f.read!ubyte();
-                    auto name = f.readBytes(namelen);
+                    auto name = f.readPreString();
                     of.writefln("\t\tSourcefile: %s", cast(string)name);
                 }
             }
@@ -448,8 +445,7 @@ void dumpSymbol(ref File of, DataFile f)
         auto offset = f.read!uint();
         auto segment = f.read!ushort();
         auto type = f.read!ushort();
-        auto namelen = f.read!ubyte();
-        auto name = f.readBytes(namelen);
+        auto name = f.readPreString();
         of.writefln("Seg %.4X + 0x%.8X: %s (%d)", segment, offset, cast(string)name, type);
         break;
     case S_ALIGN:
@@ -468,8 +464,7 @@ void dumpSymbol(ref File of, DataFile f)
     case S_UDT:
         of.writeln("Symbol: S_UDT");
         auto type = f.read!ushort();
-        auto namelen = f.read!ubyte();
-        auto name = f.readBytes(namelen);
+        auto name = f.readPreString();
         of.writefln("\tName: %s", cast(string)name);
         of.writefln("\tType: %s", decodeCVType(type));
         break;
@@ -485,8 +480,7 @@ void dumpSymbol(ref File of, DataFile f)
         auto flags = f.read!uint();
         auto machine = flags & 0xFF;
         flags >>= 8;
-        auto verlen = f.read!ubyte();
-        auto verstr = f.readBytes(verlen);
+        auto verstr = f.readPreString();
         of.writefln("\tMachine: 0x%.2X", machine);
         of.writefln("\tFlags: 0x%.6X", flags);
         of.writefln("\tVersion: %s", cast(string)verstr);
@@ -684,8 +678,7 @@ void dumpTypeLeaf(ref File of, DataFile f)
         auto dlist = f.read!ushort();
         auto vtbl = f.read!ushort();
         auto length = f.read!ushort();
-        auto namelen = f.read!ubyte();
-        auto name = f.readBytes(namelen);
+        auto name = f.readPreString();
         of.writefln("\t\tName: %s", cast(string)name);
         of.writefln("\t\tMembers: %d", count);
         of.writefln("\t\tFields: %s", decodeCVType(ftype));
@@ -799,8 +792,7 @@ bool dumpFieldLeaf(ref File of, DataFile f)
         auto ftype = f.read!ushort();
         auto attrib = decodeAttrib(f.read!ushort());
         auto offset = f.read!ushort();
-        auto namelen = f.read!ubyte();
-        auto name = f.readBytes(namelen);
+        auto name = f.readPreString();
         of.writefln("\t\tMember: %s (+%s) (%s)", cast(string)name, offset, attrib);
         break;
     case LF_NOTTRAN:
