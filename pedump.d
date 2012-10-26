@@ -232,7 +232,7 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
     {
         f.seek(lfaBase + lfoDir + CV_DIRHEADER.sizeof + CV_DIRENTRY.sizeof * i);
         auto entry = f.read!CV_DIRENTRY();
-        of.writefln("Entry: 0x%.4X 0x%.4X 0x%.8X 0x%.8X", entry.subsection, entry.iMod, entry.lfo, entry.cb);
+        of.writefln("Entry: 0x%.4X 0x%.4X 0x%.8X 0x%.8X", entry.subsection, entry.iMod, lfaBase + entry.lfo, entry.cb);
         f.seek(lfaBase + entry.lfo);
         switch(entry.subsection)
         {
@@ -374,12 +374,61 @@ void dumpCodeview(ref File of, DataFile f, uint lfaBase)
             }
             break;
         case sstFileIndex:
+            of.writefln("CV File Index:");
+            of.writefln("%.8X", f.tell());
+            auto cMod = f.read!ushort();
+            auto cRef = f.read!ushort();
+            auto ModStart = cast(ushort[])f.readBytes(ushort.sizeof * cMod);
+            auto cRefCnt = cast(ushort[])f.readBytes(ushort.sizeof * cMod);
+            auto NameRef = cast(uint[])f.readBytes(uint.sizeof * cRef);
+            auto nametable = f.tell();
+            foreach(j; 0..cMod)
+            {
+                of.writefln("\tModule %d:", j+1);
+                auto p = ModStart[j];
+                foreach(k; 0..cRefCnt[j])
+                {
+                    f.seek(nametable + NameRef[p + k]);
+                    auto namelen = f.read!ubyte();
+                    auto name = f.readBytes(namelen);
+                    of.writefln("\t\tSourcefile: %s", cast(string)name);
+                }
+            }
             break;
         case sstSegMap:
+            of.writefln("CV Segment Map:");
+            auto cSeg = f.read!ushort();
+            auto cSegLog = f.read!ushort();
+            auto SegDesc = new CV_SEGDESC[](cSegLog);
+            of.writefln("\tcSeg: %d", cSeg);
+            of.writefln("\tcSegLog: %d", cSegLog);
+            foreach(j, ref v; SegDesc)
+                v = f.read!CV_SEGDESC();
+            foreach(j, ref v; SegDesc)
+            {
+                of.writefln("\tSegment %d:", j+1);
+                of.writefln("\t\tFlags: 0x%.4X", v.flags);
+                of.writefln("\t\tOverlay: %d", v.ovl);
+                of.writefln("\t\tGroup: %d", v.group);
+                of.writefln("\t\tFrame: %d", v.frame);
+                of.writefln("\t\tSeg name: 0x%.4X", v.iSegName);
+                of.writefln("\t\tClass name: 0x%.4X", v.iClassName);
+                of.writefln("\t\tOffset: 0x%.8X", v.offset);
+                of.writefln("\t\tLength: 0x%.8X", v.cbseg);
+            }
             break;
         case sstSegName:
+            of.writefln("CV Segment Names:");
             break;
         case sstAlignSym:
+            of.writefln("CV Aligned Symbols:");
+            auto sig = f.read!uint();
+            assert(sig == 0x00000001);
+            while(f.tell() < lfaBase + entry.lfo + entry.cb)
+            {
+                f.alignto(4);
+                dumpSymbol(of, f);
+            }
             break;
         default:
             writefln("Unhandled CV subsection type 0x%.3X", entry.subsection);
@@ -412,25 +461,98 @@ void dumpSymbol(ref File of, DataFile f)
         auto checksum = f.read!uint();
         auto offset = f.read!uint();
         auto mod = f.read!ushort();
+        of.writefln("\tChecksum: 0x%.8X", checksum);
+        of.writefln("\tOffset: 0x%.8X", offset);
+        of.writefln("\tModule: 0x%.4X", mod);
         break;
-
+    case S_UDT:
+        of.writeln("Symbol: S_UDT");
+        auto type = f.read!ushort();
+        auto namelen = f.read!ubyte();
+        auto name = f.readBytes(namelen);
+        of.writefln("\tName: %s", cast(string)name);
+        of.writefln("\tType: %s", decodeCVType(type));
+        break;
+    case S_SSEARCH:
+        of.writeln("Symbol: S_SSEARCH");
+        auto offset = f.read!uint();
+        auto seg = f.read!ushort();
+        of.writefln("\tOffset: 0x%.8X", offset);
+        of.writefln("\tSegment: 0x%.4X", seg);
+        break;
     case S_COMPILE:
         of.writeln("Symbol: S_COMPILE");
-        assert(0);
+        auto flags = f.read!uint();
+        auto machine = flags & 0xFF;
+        flags >>= 8;
+        auto verlen = f.read!ubyte();
+        auto verstr = f.readBytes(verlen);
+        of.writefln("\tMachine: 0x%.2X", machine);
+        of.writefln("\tFlags: 0x%.6X", flags);
+        of.writefln("\tVersion: %s", cast(string)verstr);
+        break;
+    case S_GPROC32:
+        of.writeln("Symbol: S_GPROC32");
+        auto pParent = f.read!uint();
+        auto pEnd = f.read!uint();
+        auto pNext = f.read!uint();
+        auto proclen = f.read!uint();
+        auto debugstart = f.read!uint();
+        auto debugend = f.read!uint();
+        auto offset = f.read!uint();
+        auto segment = f.read!ushort();
+        auto proctype = f.read!ushort();
+        auto flags = f.read!ubyte();
+        auto name = f.readPreString();
+        of.writefln("\tParent scope: 0x%.8X", pParent);
+        of.writefln("\tEnd of scope: 0x%.8X", pEnd);
+        of.writefln("\tNext scope: 0x%.8X", pNext);
+        of.writefln("\tLength: 0x%.8X", proclen);
+        of.writefln("\tDebug Star: 0x%.8X", debugstart);
+        of.writefln("\tDebug End: 0x%.8X", debugend);
+        of.writefln("\tOffset: 0x%.8X", offset);
+        of.writefln("\tSegment: 0x%.4X", segment);
+        of.writefln("\tType: %s", decodeCVType(proctype));
+        of.writefln("\tFlags: 0x%.2X", flags);
+        of.writefln("\tName: %s", cast(string)name);
+        break;
+    case S_BPREL32:
+        of.writeln("Symbol: S_BPREL32");
+        auto offset = f.read!uint();
+        auto type = f.read!ushort();
+        auto name = f.readPreString();
+        of.writefln("\tName: %s", cast(string)name);
+        of.writefln("\tType: %s", decodeCVType(type));
+        of.writefln("\tOffset: 0x%.8X", offset);
+        break;
+    case S_RETURN:
+        of.writeln("Symbol: S_RETURN");
+        auto flags = f.read!ushort();
+        auto style = f.read!ubyte();
+        switch(style)
+        {
+        case 0x00:
+            of.writefln("\tvoid return");
+            break;
+        case 0x01:
+            of.writefln("\treg return");
+            auto cReg = f.read!ubyte();
+            foreach(i; 0..cReg)
+                of.writefln("\tReg: 0x%.2X", f.read!ubyte());
+            break;
+        default:
+            break;
+        }
+        break;
+    case S_END:
+        of.writeln("Symbol: S_END");
+        break;
+
     case S_REGISTER:
         of.writeln("Symbol: S_REGISTER");
         assert(0);
     case S_CONSTANT:
         of.writeln("Symbol: S_CONSTANT");
-        assert(0);
-    case S_UDT:
-        of.writeln("Symbol: S_UDT");
-        assert(0);
-    case S_SSEARCH:
-        of.writeln("Symbol: S_SSEARCH");
-        assert(0);
-    case S_END:
-        of.writeln("Symbol: S_END");
         assert(0);
     case S_SKIP:
         of.writeln("Symbol: S_SKIP");
@@ -450,16 +572,10 @@ void dumpSymbol(ref File of, DataFile f)
     case S_MANYREG:
         of.writeln("Symbol: S_MANYREG");
         assert(0);
-    case S_RETURN:
-        of.writeln("Symbol: S_RETURN");
-        assert(0);
     case S_ENTRYTHIS:
         of.writeln("Symbol: S_ENTRYTHIS");
         assert(0);
 
-    case S_BPREL32:
-        of.writeln("Symbol: S_BPREL32");
-        assert(0);
     case S_LDATA32:
         of.writeln("Symbol: S_LDATA32");
         assert(0);
@@ -468,9 +584,6 @@ void dumpSymbol(ref File of, DataFile f)
         assert(0);
     case S_LPROC32:
         of.writeln("Symbol: S_LPROC32");
-        assert(0);
-    case S_GRPOC32:
-        of.writeln("Symbol: S_GRPOC32");
         assert(0);
     case S_THUNK32:
         of.writeln("Symbol: S_THUNK32");
@@ -510,10 +623,10 @@ void dumpSymbol(ref File of, DataFile f)
     case S_REGREL16:
     case S_LPROCMIPS:
     case S_GPROCMIPS:
-        assert(0, "Unsupported Symbol type");
+        assert(0, "Unsupported Symbol type: 0x" ~ to!string(symtype, 16));
         break;
     default:
-        assert(0, "Unknown Symbol type");
+        assert(0, "Unknown Symbol type: 0x" ~ to!string(symtype, 16));
         break;
     }
 }

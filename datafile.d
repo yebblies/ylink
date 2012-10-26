@@ -73,6 +73,10 @@ public:
         pos += n;
         return d;
     }
+    immutable(ubyte)[] readPreString()
+    {
+        return readBytes(read!ubyte());
+    }
 }
 
 ubyte getByte(ref immutable(ubyte)[] d)

@@ -76,7 +76,7 @@ enum : ushort
     S_GDATA32    = 0x0202,
     S_PUB32      = 0x0203,
     S_LPROC32    = 0x0204,
-    S_GRPOC32    = 0x0205,
+    S_GPROC32    = 0x0205,
     S_THUNK32    = 0x0206,
     S_BLOCK32    = 0x0207,
     S_VFTPATH32  = 0x020B,
@@ -180,4 +180,17 @@ enum : ushort
     LF_PAD13      = 0x00FD,
     LF_PAD14      = 0x00FE,
     LF_PAD15      = 0x00FF,
+}
+
+struct CV_SEGDESC
+{
+align(1):
+    ushort flags;
+    ushort ovl;
+    ushort group;
+    ushort frame;
+    ushort iSegName;
+    ushort iClassName;
+    uint offset;
+    uint cbseg;
 }

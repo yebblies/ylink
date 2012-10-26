@@ -22,7 +22,14 @@ struct S
     _Complex float cf;
     _Complex double cd;
     _Complex long double cld;
+    union {
+        char *cp;
+        void *vp;
+        int *ip;
+    };
 };
+
+typedef struct S TD;
 
 void func(signed char sc, unsigned char uc, signed short ss, unsigned short us, signed int si, unsigned int ui, signed long sl, unsigned long ul, signed long long sll, unsigned long long ull)
 {
@@ -31,7 +38,7 @@ void func(signed char sc, unsigned char uc, signed short ss, unsigned short us, 
 void ffunc(float f, double d, long double ld) {}
 void cfunc(_Complex float f, _Complex double d, _Complex long double ld) {}
 int ifunc(_Imaginary float f, _Imaginary double d, _Imaginary long double ld) {}
-struct S sfunc(struct S s) { return s; }
+TD sfunc(struct S s) { return s; }
 
 int main(int argc, char *argv)
 {
