@@ -7,7 +7,7 @@ DEBLINKSRC=deblink.d windebug.d x86dis.d
 DEBDUMP=debdump.exe
 DEBDUMPSRC=debdump.d x86dis.d
 
-TESTOBJ=testc.obj
+TESTOBJ=testd.obj
 
 MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d

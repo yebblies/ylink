@@ -548,6 +548,31 @@ void dumpSymbol(ref File of, DataFile f)
     case S_END:
         of.writeln("Symbol: S_END");
         break;
+    case S_LDATA32:
+        of.writeln("Symbol: S_LDATA32");
+        auto offset = f.read!uint();
+        auto segment = f.read!ushort();
+        auto type = f.read!ushort();
+        auto name = f.readPreString();
+        of.writefln("\tName: %s", cast(string)name);
+        of.writefln("\tType: %s", decodeCVType(type));
+        of.writefln("\tSegment: 0x%.4X", segment);
+        of.writefln("\tOffset: 0x%.8X", offset);
+        break;
+    case S_ENDARG:
+        of.writeln("Symbol: S_ENDARG");
+        break;
+    case S_GDATA32:
+        of.writeln("Symbol: S_GDATA32");
+        auto offset = f.read!uint();
+        auto segment = f.read!ushort();
+        auto type = f.read!ushort();
+        auto name = f.readPreString();
+        of.writefln("\tName: %s", cast(string)name);
+        of.writefln("\tType: %s", decodeCVType(type));
+        of.writefln("\tSegment: 0x%.4X", segment);
+        of.writefln("\tOffset: 0x%.8X", offset);
+        break;
 
     case S_REGISTER:
         of.writeln("Symbol: S_REGISTER");
@@ -564,9 +589,6 @@ void dumpSymbol(ref File of, DataFile f)
     case S_OBJNAME:
         of.writeln("Symbol: S_OBJNAME");
         assert(0);
-    case S_ENDARG:
-        of.writeln("Symbol: S_ENDARG");
-        assert(0);
     case S_COBOLUDT:
         of.writeln("Symbol: S_COBOLUDT");
         assert(0);
@@ -577,12 +599,6 @@ void dumpSymbol(ref File of, DataFile f)
         of.writeln("Symbol: S_ENTRYTHIS");
         assert(0);
 
-    case S_LDATA32:
-        of.writeln("Symbol: S_LDATA32");
-        assert(0);
-    case S_GDATA32:
-        of.writeln("Symbol: S_GDATA32");
-        assert(0);
     case S_LPROC32:
         of.writeln("Symbol: S_LPROC32");
         assert(0);
@@ -674,11 +690,15 @@ void dumpTypeLeaf(ref File of, DataFile f)
 
     case LF_FIELDLIST:
         of.writeln("\tLF_FIELDLIST");
-        while (dumpFieldLeaf(of, f)) {}
+        while ((f.peek!ushort() & 0xFF00) == 0x0400) dumpFieldLeaf(of, f);
         break;
 
     case LF_STRUCTURE:
-        of.writeln("\tLF_STRUCT");
+    case LF_CLASS:
+        if (type == LF_STRUCTURE)
+            of.writeln("\tLF_STRUCTURE");
+        else
+            of.writeln("\tLF_CLASS");
         auto count = f.read!ushort();
         auto ftype = f.read!ushort();
         auto prop = f.read!ushort();
@@ -701,15 +721,75 @@ void dumpTypeLeaf(ref File of, DataFile f)
         auto ptype = f.read!ushort();
         of.writefln("\t\ttype: %s", decodeCVType(ptype));
         of.writefln("\t\tattr: %.4X", attr);
-        assert(attr == 0x0A);
-        break;
+        auto size = attr & 0x1F;
+        assert(size == 0xA);
+        auto ptrmode = (attr >> 5) & 0x3;
+        switch(ptrmode)
+        {
+        case 0:
+            of.writefln("\t\tmode: pointer");
+            break;
+        case 1:
+            of.writefln("\t\tmode: reference");
+            break;
+        default:
+            assert(0);
+        }
+      break;
 
     case LF_MODIFIER:
+        of.writeln("\tLF_MODIFIER");
+        auto attr = f.read!ushort();
+        auto ptype = f.read!ushort();
+        of.writefln("\t\ttype: %s", decodeCVType(ptype));
+        of.writefln("\t\tattr:%s%s%s", (attr & 0x1) ? " const" : "", (attr & 0x2) ? " volatile" : "", (attr & 0x4) ? " unaligned" : "");
+        break;
+
+    case LF_OEM:
+        of.writeln("\tLF_OEM");
+        auto OEMid = f.read!ushort();
+        auto recOEM = f.read!ushort();
+        auto count = f.read!ushort();
+        auto indices = cast(ushort[])f.readBytes(ushort.sizeof * count);
+        of.writefln("\t\tOEM id: 0x%.4X", OEMid);
+        of.writefln("\t\ttype id: 0x%.4X", recOEM);
+        foreach(ind; indices)
+            of.writefln("\t\tsubtype: %s", decodeCVType(ind));
+        break;
+
     case LF_ARRAY:
-    case LF_CLASS:
+        of.writeln("\tLF_ARRAY");
+        auto etype = f.read!ushort();
+        auto itype = f.read!ushort();
+        auto length = f.read!ushort();
+        auto name = f.readPreString();
+        of.writefln("\t\tName: %s", name);
+        of.writefln("\t\tElement type: %s", decodeCVType(etype));
+        of.writefln("\t\tIndex type: %s", decodeCVType(itype));
+        of.writefln("\t\tLength: %d", length);
+        break;
+
+    case LF_MFUNCTION:
+        of.writeln("\tLF_MFUNCTION");
+        auto rvtype = f.read!ushort();
+        auto classt = f.read!ushort();
+        auto thist = f.read!ushort();
+        auto cc = f.read!ubyte();
+        f.read!ubyte();
+        auto parms = f.read!ushort();
+        auto arglist = f.read!ushort();
+        auto thisadjust = f.read!uint();
+        of.writefln("\t\tReturn type: %s", decodeCVType(rvtype));
+        of.writefln("\t\tClass type: %s", decodeCVType(classt));
+        of.writefln("\t\tThis type: %s", decodeCVType(thist));
+        of.writefln("\t\tCalling convention: %d", cc);
+        of.writefln("\t\tParams: %d", parms);
+        of.writefln("\t\tArgs: %s", decodeCVType(arglist));
+        of.writefln("\t\tThis adjust: 0x%.8X", thisadjust);
+        break;
+
     case LF_UNION:
     case LF_ENUM:
-    case LF_MFUNCTION:
     case LF_VTSHAPE:
     case LF_COBOL0:
     case LF_COBOL1:
@@ -721,7 +801,6 @@ void dumpTypeLeaf(ref File of, DataFile f)
     case LF_VFTPATH:
     case LF_PRECOMP:
     case LF_ENDPRECOMP:
-    case LF_OEM:
 
     case LF_SKIP:
     case LF_DEFARG:
@@ -790,7 +869,7 @@ void dumpTypeLeaf(ref File of, DataFile f)
     }
 }
 
-bool dumpFieldLeaf(ref File of, DataFile f)
+void dumpFieldLeaf(ref File of, DataFile f)
 {
     auto type = f.read!ushort();
     switch (type)
@@ -802,15 +881,12 @@ bool dumpFieldLeaf(ref File of, DataFile f)
         auto name = f.readPreString();
         of.writefln("\t\tMember: %s (+%s) (%s)", cast(string)name, offset, attrib);
         break;
-    case LF_NOTTRAN:
-        return false;
     default:
         assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(type, 16));
     }
     auto fix = f.peek!ubyte();
     if (fix > 0xF0)
         f.seek(f.tell() + (fix & 0xF));
-    return true;
 }
 
 string decodeAttrib(ushort attrib)
