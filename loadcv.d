@@ -40,7 +40,21 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
     assert(dirheader.flags == 0);
     debugfln("Found %d subsections", dirheader.cDir);
 
-    loadCodeViewPredefinedTypes(di);
+    uint[] typeoffsets;
+    DebugType[] types;
+    typeoffsets.length = 4096;
+    types.length = 4096;
+    types[T_VOID] = new DebugTypeBasic(BT_VOID);
+    types[T_32PVOID] = new DebugTypePointer(types[T_VOID]);
+    types[T_RCHAR] = new DebugTypeBasic(BT_CHAR);
+    types[T_32PRCHAR] = new DebugTypePointer(types[T_RCHAR]);
+    types[0x78] = new DebugTypeBasic(BT_DCHAR);
+    types[T_UCHAR] = new DebugTypeBasic(BT_UBYTE);
+    types[T_INT4] = new DebugTypeBasic(BT_INT);
+    types[T_UINT4] = new DebugTypeBasic(BT_UINT);
+    types[T_QUAD] = new DebugTypeBasic(BT_LONG);
+    types[T_UQUAD] = new DebugTypeBasic(BT_ULONG);
+    types[T_BOOL08] = new DebugTypeBasic(BT_BOOL);
 
     foreach(i; 0..dirheader.cDir)
     {
@@ -198,7 +212,13 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
             foreach(j, ref off; offType)
             {
                 f.seek(typestart + off);
-                loadType(f, di);
+                types ~= loadTypeLeaf(f);
+            }
+            foreach(j, ref off; offType)
+            {
+                f.seek(typestart + off);
+                assert(types[0x1000+j]);
+                types[0x1000+j] = types[0x1000+j].resolve(types);
             }
             break;
         case sstFileIndex:
@@ -295,41 +315,10 @@ void loadSymbol(DataFile f, DebugInfo di)
     f.seek(f.tell() + len - 2);
 }
 
-void loadCodeViewPredefinedTypes(DebugInfo di)
-{
-    foreach(i; 0..0x1000)
-    {
-        DebugType t;
-        switch(i)
-        {
-        case T_VOID: t = new DebugTypeBasic(BT_VOID); break;
-        case T_32PVOID: t = new DebugTypePointer(new DebugTypeBasic(BT_VOID)); break;
-        case 0x78: t = new DebugTypeBasic(BT_DCHAR); break;
-        case T_RCHAR: t = new DebugTypeBasic(BT_CHAR); break;
-        case T_INT4: t = new DebugTypeBasic(BT_INT); break;
-        case T_UINT4: t = new DebugTypeBasic(BT_UINT); break;
-        case T_BOOL08: t = new DebugTypeBasic(BT_BOOL); break;
-        default:
-            break;
-        }
-        di.addType(t);
-    }
-}
-
-void loadType(DataFile f, DebugInfo di)
-{
-    auto len = f.read!ushort();
-    auto start = f.tell();
-    while (f.tell() < start + len)
-    {
-        auto t = loadTypeLeaf(f, di);
-        di.addType(t);
-    }
-}
-
-DebugType loadTypeLeaf(DataFile f, DebugInfo di)
+DebugType loadTypeLeaf(DataFile f)
 {
     DebugType t;
+    auto length = f.read!ushort();
     auto type = f.read!ushort();
     switch (type)
     {
@@ -339,7 +328,7 @@ DebugType loadTypeLeaf(DataFile f, DebugInfo di)
         auto ptype = f.read!ushort();
         debugfln("\t\ttype: %s", decodeCVType(ptype));
         debugfln("\t\tattr:%s%s%s", (attr & 0x1) ? " const" : "", (attr & 0x2) ? " volatile" : "", (attr & 0x4) ? " unaligned" : "");
-        t = di.getType(ptype).copy();
+        t = new DebugTypeIndex(ptype);
         if (attr & 0x1) t.modifiers |= M_CONST;
         if (attr & 0x2) t.modifiers |= M_VOLATILE;
         if (attr & 0x4) t.modifiers |= M_UNALIGNED;
@@ -361,7 +350,7 @@ DebugType loadTypeLeaf(DataFile f, DebugInfo di)
         case 0x0001: // Dynamic array
             assert(count == 2);
             assert(indices[0] == T_LONG);
-            t = di.getType(indices[1]);
+            t = new DebugTypeIndex(indices[1]);
             t = new DebugTypeDArray(t);
             break;
         default:
@@ -378,7 +367,7 @@ DebugType loadTypeLeaf(DataFile f, DebugInfo di)
         {
             auto typind = f.read!ushort();
             debugfln("\t\t%s", decodeCVType(typind));
-            ts ~= di.getType(typind);
+            ts ~= new DebugTypeIndex(typind);
         }
         t = new DebugTypeList(ts);
         break;
@@ -394,9 +383,9 @@ DebugType loadTypeLeaf(DataFile f, DebugInfo di)
         debugfln("\t\tCalling convention: %d", cc);
         debugfln("\t\tArg count: %d", argcount);
         debugfln("\t\tArg list: %s", decodeCVType(arglist));
-        auto tr = di.getType(rettype);
-        auto at = di.getType(arglist);
-        t = new DebugTypeFunction(tr, at);
+        auto tr = new DebugTypeIndex(rettype);
+        auto at = new DebugTypeIndex(arglist);
+        t = new DebugTypeFunction(tr, at, null, null);
         break;
 
     case LF_POINTER:
@@ -408,7 +397,7 @@ DebugType loadTypeLeaf(DataFile f, DebugInfo di)
         auto size = attr & 0x1F;
         assert(size == 0xA);
         auto ptrmode = (attr >> 5) & 0x3;
-        t = di.getType(ptype);
+        t = new DebugTypeIndex(ptype);
         switch(ptrmode)
         {
         case 0:
@@ -422,9 +411,137 @@ DebugType loadTypeLeaf(DataFile f, DebugInfo di)
         default:
             assert(0);
         }
-        if (attr & 0x1) t.modifiers |= M_CONST;
-        if (attr & 0x2) t.modifiers |= M_VOLATILE;
-        if (attr & 0x4) t.modifiers |= M_UNALIGNED;
+        assert(!(attr & 0x100));
+        if (attr & 0x200) t.modifiers |= M_VOLATILE;
+        if (attr & 0x400) t.modifiers |= M_CONST;
+        if (attr & 0x800) t.modifiers |= M_UNALIGNED;
+        break;
+
+    case LF_STRUCTURE:
+    case LF_CLASS:
+        if (type == LF_STRUCTURE)
+            debugfln("\tLF_STRUCTURE");
+        else
+            debugfln("\tLF_CLASS");
+        auto count = f.read!ushort();
+        auto ftype = f.read!ushort();
+        auto prop = f.read!ushort();
+        auto dlist = f.read!ushort();
+        auto vtbl = f.read!ushort();
+        auto size = f.read!ushort();
+        auto name = f.readPreString();
+        debugfln("\t\tName: %s", cast(string)name);
+        debugfln("\t\tMembers: %d", count);
+        debugfln("\t\tFields: %s", decodeCVType(ftype));
+        debugfln("\t\tProperties: %.4X", prop);
+        debugfln("\t\tDerived: %s", decodeCVType(dlist));
+        debugfln("\t\tVtbl: %s", decodeCVType(vtbl));
+        debugfln("\t\tsizeof: %d", size);
+        DebugType fields;
+        if (count)
+            fields = new DebugTypeIndex(ftype);
+        if (type == LF_STRUCTURE)
+            t = new DebugTypeStruct(fields);
+        else
+            t = new DebugTypeClass(fields);
+        break;
+
+    case LF_ARRAY:
+        debugfln("\tLF_ARRAY");
+        auto etype = f.read!ushort();
+        auto itype = f.read!ushort();
+        auto dim = f.read!ushort();
+        auto name = f.readPreString();
+        debugfln("\t\tName: %s", name);
+        debugfln("\t\tElement type: %s", decodeCVType(etype));
+        debugfln("\t\tIndex type: %s", decodeCVType(itype));
+        debugfln("\t\tLength: %d", dim);
+        assert(itype == T_LONG);
+        auto et = new DebugTypeIndex(etype);
+        t = new DebugTypeArray(et);
+        break;
+
+    case LF_FIELDLIST:
+        debugfln("\tLF_FIELDLIST");
+        DebugType[] ts;
+        while ((f.peek!ushort() & 0xFF00) == 0x0400)
+        {
+            auto fdtype = f.read!ushort();
+            switch (fdtype)
+            {
+            case LF_MEMBER:
+                auto ftype = f.read!ushort();
+                auto attrib = decodeAttrib(f.read!ushort());
+                auto offset = f.read!ushort();
+                auto name = f.readPreString();
+                debugfln("\t\tMember: %s (+%s) (%s)", cast(string)name, offset, attrib);
+                auto ft = new DebugTypeIndex(ftype);
+                auto dft = new DebugTypeField(ft, offset, name);
+                //di.addType(dft);
+                ts ~= dft;
+                break;
+            case LF_METHOD:
+                auto count = f.read!ushort();
+                auto mlist = f.read!ushort();
+                auto name = f.readPreString();
+                debugfln("\t\tMember functions: %s (%d)", cast(string)name, count);
+                auto ft = new DebugTypeIndex(mlist);
+                ts ~= new DebugTypeField(ft, 0, name);
+                break;
+            default:
+                assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(fdtype, 16));
+            }
+            auto fix = f.peek!ubyte();
+            if (fix > 0xF0)
+                f.seek(f.tell() + (fix & 0xF));
+        }
+        t = new DebugTypeList(ts);
+        break;
+
+    case LF_MFUNCTION:
+        debugfln("\tLF_MFUNCTION");
+        auto rvtype = f.read!ushort();
+        auto classt = f.read!ushort();
+        auto thist = f.read!ushort();
+        auto cc = f.read!ubyte();
+        f.read!ubyte();
+        auto parms = f.read!ushort();
+        auto arglist = f.read!ushort();
+        auto thisadjust = f.read!uint();
+        debugfln("\t\tReturn type: %s", decodeCVType(rvtype));
+        debugfln("\t\tClass type: %s", decodeCVType(classt));
+        debugfln("\t\tThis type: %s", decodeCVType(thist));
+        debugfln("\t\tCalling convention: %d", cc);
+        debugfln("\t\tParams: %d", parms);
+        debugfln("\t\tArgs: %s", decodeCVType(arglist));
+        debugfln("\t\tThis adjust: 0x%.8X", thisadjust);
+        auto rt = new DebugTypeIndex(rvtype);
+        auto ct = new DebugTypeIndex(classt);
+        auto tt = new DebugTypeIndex(thist);
+        auto at = new DebugTypeIndex(arglist);
+        assert(thisadjust == 0);
+        t = new DebugTypeFunction(rt, at, ct, tt);
+        break;
+
+    case LF_MLIST:
+        debugfln("\tLF_MLIST");
+        auto start = f.tell();
+        uint[] offsets;
+        DebugType[] types;
+        while (f.tell() < start + length - 2)
+        {
+            auto attr = f.read!ushort();
+            auto ftype = f.read!ushort();
+            auto mprop = (attr >> 2) & 0x7;
+            uint offset;
+            if (mprop == 4)
+                offset = f.read!uint();
+            debugfln("\t\tAttr: 0x%.4X", attr);
+            debugfln("\t\tType: %s", decodeCVType(ftype));
+            debugfln("\t\tOffset: 0x%.8X", offset);
+            offsets ~= offsets;
+        }
+        t = new DebugTypeMemberList(types, offsets);
         break;
 
     default:
@@ -646,255 +763,9 @@ void dumpSymbol(ref File of, DataFile f)
 
 }
 
-version(none)
-{
-
-void dumpType(ref File of, DataFile f)
-{
-    auto len = f.read!ushort();
-    of.writeln("Type:");
-    auto start = f.tell();
-    while (f.tell() < start + len)
-    {
-        dumpTypeLeaf(of, f);
-    }
-}
-
-void dumpTypeLeaf(ref File of, DataFile f)
-{
-    auto type = f.read!ushort();
-    switch (type)
-    {
-    case LF_ARGLIST:
-        of.writeln("\tLF_ARGLIST");
-        auto count = f.read!ushort();
-        of.writefln("\t\t%d args", count);
-        foreach(i; 0..count)
-        {
-            auto typind = f.read!ushort();
-            of.writefln("\t\t%s", decodeCVType(typind));
-        }
-        break;
-
-    case LF_PROCEDURE:
-        of.writeln("\tLF_PROCEDURE");
-        auto rettype = f.read!ushort();
-        auto cc = f.read!ubyte();
-        auto reserved = f.read!ubyte();
-        auto argcount = f.read!ushort();
-        auto arglist = f.read!ushort();
-        of.writefln("\t\tReturn type: %s", decodeCVType(rettype));
-        of.writefln("\t\tCalling convention: %d", cc);
-        of.writefln("\t\tArg count: %d", argcount);
-        of.writefln("\t\tArg list: %s", decodeCVType(arglist));
-        break;
-
-    case LF_FIELDLIST:
-        of.writeln("\tLF_FIELDLIST");
-        while ((f.peek!ushort() & 0xFF00) == 0x0400) dumpFieldLeaf(of, f);
-        break;
-
-    case LF_STRUCTURE:
-    case LF_CLASS:
-        if (type == LF_STRUCTURE)
-            of.writeln("\tLF_STRUCTURE");
-        else
-            of.writeln("\tLF_CLASS");
-        auto count = f.read!ushort();
-        auto ftype = f.read!ushort();
-        auto prop = f.read!ushort();
-        auto dlist = f.read!ushort();
-        auto vtbl = f.read!ushort();
-        auto length = f.read!ushort();
-        auto name = f.readPreString();
-        of.writefln("\t\tName: %s", cast(string)name);
-        of.writefln("\t\tMembers: %d", count);
-        of.writefln("\t\tFields: %s", decodeCVType(ftype));
-        of.writefln("\t\tProperties: %.4X", prop);
-        of.writefln("\t\tDerived: %s", decodeCVType(dlist));
-        of.writefln("\t\tVtbl: %s", decodeCVType(vtbl));
-        of.writefln("\t\tsizeof: %d", length);
-        break;
-
-    case LF_POINTER:
-        of.writeln("\tLF_POINTER");
-        auto attr = f.read!ushort();
-        auto ptype = f.read!ushort();
-        of.writefln("\t\ttype: %s", decodeCVType(ptype));
-        of.writefln("\t\tattr: %.4X", attr);
-        auto size = attr & 0x1F;
-        assert(size == 0xA);
-        auto ptrmode = (attr >> 5) & 0x3;
-        switch(ptrmode)
-        {
-        case 0:
-            of.writefln("\t\tmode: pointer");
-            break;
-        case 1:
-            of.writefln("\t\tmode: reference");
-            break;
-        default:
-            assert(0);
-        }
-      break;
-
-    case LF_MODIFIER:
-        of.writeln("\tLF_MODIFIER");
-        auto attr = f.read!ushort();
-        auto ptype = f.read!ushort();
-        of.writefln("\t\ttype: %s", decodeCVType(ptype));
-        of.writefln("\t\tattr:%s%s%s", (attr & 0x1) ? " const" : "", (attr & 0x2) ? " volatile" : "", (attr & 0x4) ? " unaligned" : "");
-        break;
-
-    case LF_OEM:
-        of.writeln("\tLF_OEM");
-        auto OEMid = f.read!ushort();
-        auto recOEM = f.read!ushort();
-        auto count = f.read!ushort();
-        auto indices = cast(ushort[])f.readBytes(ushort.sizeof * count);
-        of.writefln("\t\tOEM id: 0x%.4X", OEMid);
-        of.writefln("\t\ttype id: 0x%.4X", recOEM);
-        foreach(ind; indices)
-            of.writefln("\t\tsubtype: %s", decodeCVType(ind));
-        break;
-
-    case LF_ARRAY:
-        of.writeln("\tLF_ARRAY");
-        auto etype = f.read!ushort();
-        auto itype = f.read!ushort();
-        auto length = f.read!ushort();
-        auto name = f.readPreString();
-        of.writefln("\t\tName: %s", name);
-        of.writefln("\t\tElement type: %s", decodeCVType(etype));
-        of.writefln("\t\tIndex type: %s", decodeCVType(itype));
-        of.writefln("\t\tLength: %d", length);
-        break;
-
-    case LF_MFUNCTION:
-        of.writeln("\tLF_MFUNCTION");
-        auto rvtype = f.read!ushort();
-        auto classt = f.read!ushort();
-        auto thist = f.read!ushort();
-        auto cc = f.read!ubyte();
-        f.read!ubyte();
-        auto parms = f.read!ushort();
-        auto arglist = f.read!ushort();
-        auto thisadjust = f.read!uint();
-        of.writefln("\t\tReturn type: %s", decodeCVType(rvtype));
-        of.writefln("\t\tClass type: %s", decodeCVType(classt));
-        of.writefln("\t\tThis type: %s", decodeCVType(thist));
-        of.writefln("\t\tCalling convention: %d", cc);
-        of.writefln("\t\tParams: %d", parms);
-        of.writefln("\t\tArgs: %s", decodeCVType(arglist));
-        of.writefln("\t\tThis adjust: 0x%.8X", thisadjust);
-        break;
-
-    case LF_UNION:
-    case LF_ENUM:
-    case LF_VTSHAPE:
-    case LF_COBOL0:
-    case LF_COBOL1:
-    case LF_BARRAY:
-    case LF_LABEL:
-    case LF_NULL:
-    case LF_NOTTRAN:
-    case LF_DIMARRAY:
-    case LF_VFTPATH:
-    case LF_PRECOMP:
-    case LF_ENDPRECOMP:
-
-    case LF_SKIP:
-    case LF_DEFARG:
-    case LF_LIST:
-    case LF_DERIVED:
-    case LF_BITFIELD:
-    case LF_MLIST:
-    case LF_DIMCONU:
-    case LF_DIMCONLU:
-    case LF_DIMVARU:
-    case LF_DIMVARLU:
-    case LF_REFSYM:
-
-    case LF_BCLASS:
-    case LF_VBCLASS:
-    case LF_IVBCLASS:
-    case LF_ENUMERATE:
-    case LF_FRIENDFCN:
-    case LF_INDEX:
-    case LF_MEMBER:
-    case LF_STMEMBER:
-    case LF_METHOD:
-    case LF_NESTTYPE:
-    case LF_VFUNCTAB:
-    case LF_FRIENDCLS:
-    case LF_ONEMETHOD:
-    case LF_VFUNCOFF:
-
-    case LF_CHAR:
-    case LF_SHORT:
-    case LF_USHORT:
-    case LF_LONG:
-    case LF_ULONG:
-    case LF_REAL32:
-    case LF_REAL64:
-    case LF_REAL80:
-    case LF_REAL128:
-    case LF_QUADWORD:
-    case LF_UQUADWORD:
-    case LF_REAL48:
-    case LF_COMPLEX32:
-    case LF_COMPLEX64:
-    case LF_COMPLEX80:
-    case LF_COMPLEX128:
-    case LF_VARSTRING:
-
-    case LF_PAD0:
-    case LF_PAD1:
-    case LF_PAD2:
-    case LF_PAD3:
-    case LF_PAD4:
-    case LF_PAD5:
-    case LF_PAD6:
-    case LF_PAD7:
-    case LF_PAD8:
-    case LF_PAD9:
-    case LF_PAD10:
-    case LF_PAD11:
-    case LF_PAD12:
-    case LF_PAD13:
-    case LF_PAD14:
-    case LF_PAD15:
-        assert(0, "Unsupported CV4 Type: 0x" ~ to!string(type, 16));
-    default:
-        assert(0, "Unknown CV4 Type: 0x" ~ to!string(type, 16));
-    }
-}
-
-void dumpFieldLeaf(ref File of, DataFile f)
-{
-    auto type = f.read!ushort();
-    switch (type)
-    {
-    case LF_MEMBER:
-        auto ftype = f.read!ushort();
-        auto attrib = decodeAttrib(f.read!ushort());
-        auto offset = f.read!ushort();
-        auto name = f.readPreString();
-        of.writefln("\t\tMember: %s (+%s) (%s)", cast(string)name, offset, attrib);
-        break;
-    default:
-        assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(type, 16));
-    }
-    auto fix = f.peek!ubyte();
-    if (fix > 0xF0)
-        f.seek(f.tell() + (fix & 0xF));
-}
-
 string decodeAttrib(ushort attrib)
 {
     return "<<attrib>>";
-}
-
 }
 
 string decodeCVType(ushort typeind)

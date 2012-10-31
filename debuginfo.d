@@ -11,7 +11,6 @@ private:
     DebugLibrary[] libraries;
     DebugSourceFile[] sourcefiles;
     DebugSegment[] segments;
-    DebugType[] types;
 
 public:
     this()
@@ -41,15 +40,6 @@ public:
     void addModuleSource(size_t moduleid, immutable(ubyte)[] name)
     {
         modules[moduleid-1].addSourceFile(name);
-    }
-    void addType(DebugType t)
-    {
-        types ~= t;
-    }
-    DebugType getType(size_t line = __LINE__)(size_t i)
-    {
-        assert(i < types.length && types[i], "Type 0x" ~ to!string(i, 16) ~ " is not defined from " ~ to!string(line));
-        return types[i];
     }
     void dump()
     {
