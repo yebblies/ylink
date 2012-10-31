@@ -13,7 +13,7 @@ MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d
 
 PEDUMP=pedump.exe
-PEDUMPSRC=pedump.d coffdef.d datafile.d codeview.d
+PEDUMPSRC=pedump.d coffdef.d datafile.d codeview.d pefile.d executablefile.d debuginfo.d
 
 #DEBUGFLAGS=-debug=fixup -debug=OMFDATA
 #DEBUGFLAGS=-debug=OMFDEBUG -debug=OMFDATA
@@ -58,7 +58,7 @@ test: $(DEBDUMP) p0.txt p1.txt
 	debdump
 
 $(PEDUMP): $(PEDUMPSRC)
-	dmd -of$(PEDUMP) $(PEDUMPSRC)
+	dmd -of$(PEDUMP) $(PEDUMPSRC) -debug=LOADPE
 
 dump: pe0.txt pe1.txt
 
