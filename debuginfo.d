@@ -6,6 +6,7 @@ class DebugInfo
 private:
     DebugModule[] modules;
     DebugLibrary[] libraries;
+    DebugSourceFile[] sourcefiles;
 
 public:
     this()
@@ -20,6 +21,10 @@ public:
     {
         libraries ~= l;
     }
+    void addSourceFile(DebugSourceFile s)
+    {
+        sourcefiles ~= s;
+    }
     void dump()
     {
         writeln("Libraries:");
@@ -29,6 +34,10 @@ public:
         writeln("Modules:");
         foreach(i, m; modules)
             writefln("\t#%d: %s (%s)", i+1, cast(string)m.name, m.libIndex ? cast(string)libraries[m.libIndex-1].name : "");
+        writeln();
+        writeln("Source files:");
+        foreach(i, s; sourcefiles)
+            writefln("\t#%d: %s", i+1, cast(string)s.name);
         writeln();
     }
 }
@@ -48,6 +57,18 @@ public:
 }
 
 class DebugLibrary
+{
+private:
+    immutable(ubyte)[] name;
+
+public:
+    this(immutable(ubyte)[] name)
+    {
+        this.name = name;
+    }
+}
+
+class DebugSourceFile
 {
 private:
     immutable(ubyte)[] name;

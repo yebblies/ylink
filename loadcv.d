@@ -7,7 +7,7 @@ import debuginfo;
 
 private:
 
-//debug=LOADCV;
+debug=LOADCV;
 
 void debugfln(T...)(T args)
 {
@@ -99,9 +99,11 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
                 auto baseSrcLn = cast(immutable uint[])f.readBytes(uint.sizeof * xcSeg);
                 auto startend = cast(immutable uint[2][])f.readBytes((uint[2]).sizeof * xcSeg);
                 auto name = f.readPreString();
-                debugfln("\tName: ", cast(string)name);
+                debugfln("\tName: %s", cast(string)name);
                 debugfln("\tLine maps: %(0x%.8X, %)", baseSrcLn);
                 debugfln("\tSegs: %(%(0x%.8X..%), %)", startend);
+
+                di.addSourceFile(new DebugSourceFile(name));
 
                 foreach(k, off; baseSrcLn)
                 {
