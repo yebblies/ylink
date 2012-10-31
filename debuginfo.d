@@ -34,6 +34,10 @@ public:
     {
         segments[segid-1].name = name;
     }
+    void addModuleSource(size_t moduleid, immutable(ubyte)[] name)
+    {
+        modules[moduleid-1].addSourceFile(name);
+    }
     void dump()
     {
         writeln("Libraries:");
@@ -42,7 +46,13 @@ public:
         writeln();
         writeln("Modules:");
         foreach(i, m; modules)
+        {
             writefln("\t#%d: %s (%s)", i+1, cast(string)m.name, m.libIndex ? cast(string)libraries[m.libIndex-1].name : "");
+            foreach(j, s; m.sourceFiles)
+            {
+                writefln("\t\t%s", cast(string)s);
+            }
+        }
         writeln();
         writeln("Segments:");
         foreach(i, s; segments)
@@ -71,12 +81,17 @@ class DebugModule
 private:
     immutable(ubyte)[] name;
     size_t libIndex;
+    immutable(ubyte)[][] sourceFiles;
 
 public:
     this(immutable(ubyte)[] name, size_t libIndex)
     {
         this.name = name;
         this.libIndex = libIndex;
+    }
+    void addSourceFile(immutable(ubyte)[] s)
+    {
+        sourceFiles ~= s;
     }
 }
 

@@ -215,6 +215,7 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
                     f.seek(nametable + NameRef[p + k]);
                     auto name = f.readPreString();
                     debugfln("\t\tSourcefile: %s", cast(string)name);
+                    di.addModuleSource(j+1, name);
                 }
             }
             break;
