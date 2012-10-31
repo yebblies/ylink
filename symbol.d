@@ -26,6 +26,7 @@ abstract class Symbol
     }
     abstract void dump();
     abstract uint getAddress();
+    abstract uint getSegment();
 }
 
 final class PublicSymbol : Symbol
@@ -47,6 +48,11 @@ final class PublicSymbol : Symbol
         assert(sec);
         return sec.base + offset;
     }
+    override uint getSegment()
+    {
+        assert(sec);
+        return sec.container.seg.segid;
+    }
 }
 
 final class AbsoluteSymbol : Symbol
@@ -65,6 +71,10 @@ final class AbsoluteSymbol : Symbol
     {
         return offset;
     }
+    override uint getSegment()
+    {
+        return 0;
+    }
 }
 
 final class ExternSymbol : Symbol
@@ -78,6 +88,10 @@ final class ExternSymbol : Symbol
         writeln("Extern: ", cleanString(name), " (", refCount, ")");
     }
     override uint getAddress()
+    {
+        assert(0);
+    }
+    override uint getSegment()
     {
         assert(0);
     }
@@ -104,6 +118,11 @@ final class ComdatSymbol : Symbol
         assert(sec);
         return sec.base + offset;
     }
+    override uint getSegment()
+    {
+        assert(sec);
+        return sec.container.seg.segid;
+    }
 }
 
 final class ComdefSymbol : Symbol
@@ -123,6 +142,11 @@ final class ComdefSymbol : Symbol
     {
         assert(sec, cleanString(name));
         return sec.base;
+    }
+    override uint getSegment()
+    {
+        assert(sec);
+        return sec.container.seg.segid;
     }
 }
 
@@ -148,6 +172,11 @@ final class ImportSymbol : Symbol
     {
         assert(sec);
         return sec.base + offset;
+    }
+    override uint getSegment()
+    {
+        assert(sec);
+        return sec.container.seg.segid;
     }
 }
 

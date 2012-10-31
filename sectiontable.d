@@ -122,6 +122,15 @@ final class SectionTable
         Data.allocate(segAlign);
         Const.allocate(segAlign);
 
+        size_t segid = 0;
+        if (Import.length) Import.segid = segid++;
+        //if (Export.length) Export.segid = segid++;
+        if (Text.length) Text.segid = segid++;
+        if (TLS.length) TLS.segid = segid++;
+        if (Data.length) Data.segid = segid++;
+        if (Const.length) Const.segid = segid++;
+        if (BSS.length) BSS.segid = segid++;
+
         if (Import.length) segs[SegmentType.Import] = Import;
         //if (Export.length) segs[SegmentType.Export] = Export;
         if (Text.length) segs[SegmentType.Text] = Text;

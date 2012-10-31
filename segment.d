@@ -25,6 +25,7 @@ final class Segment
     uint fileOffset;
     CombinedSection[] members;
     ubyte[] data;
+    size_t segid;
 
     this(SegmentType type, uint base, uint fileOffset)
     {

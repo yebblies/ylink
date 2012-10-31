@@ -589,6 +589,7 @@ public:
                         //writeln("F", frametype, " T", (P << 2) | Targt);
                         uint targetBase;
                         uint targetAddress;
+                        uint targetSeg;
                         //writeln(location, ' ', displacement, ' ', offset);
                         //writeln("in ", cast(string)defSection.fullname);
                         switch(Targt)
@@ -598,6 +599,7 @@ public:
                             auto targetSec = sections[target-1];
                             targetBase = targetSec.base;
                             targetAddress = targetBase + displacement;
+                            targetSeg = targetSec.container.seg.segid;
                             break;
                         case 2:
                             //writeln(externs.length, ' ', target);
@@ -609,6 +611,7 @@ public:
                             assert(sym, cast(string)extname);
                             targetBase = sym.getAddress();
                             targetAddress = targetBase + displacement;
+                            targetSeg = sym.getSegment();
                             break;
                         default:
                             enforce(false, "Group-relative targets are not supported");
@@ -663,7 +666,7 @@ public:
                         case 11: // seg-offset
                             debug(fixup) writefln("### FIXUP deb (0x%.4X) 0x%.8X -> 0x%.8X + 0x%.8X", offset, baseAddress, targetBase, displacement);
                             enforce(offset + 6 <= xdata.length);
-                            (cast(ushort[])xdata[offset..offset+2])[0] = 0;
+                            (cast(ushort[])xdata[offset..offset+2])[0] = cast(ushort)targetSeg;
                             (cast(uint[])xdata[offset+2..offset+6])[0] = targetAddress - baseAddress;
                             break;
                         default:
