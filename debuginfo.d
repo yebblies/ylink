@@ -7,6 +7,7 @@ private:
     DebugModule[] modules;
     DebugLibrary[] libraries;
     DebugSourceFile[] sourcefiles;
+    DebugSegment[] segments;
 
 public:
     this()
@@ -25,6 +26,14 @@ public:
     {
         sourcefiles ~= s;
     }
+    void addSegment(DebugSegment s)
+    {
+        segments ~= s;
+    }
+    void setSegmentName(size_t segid, immutable(ubyte)[] name)
+    {
+        segments[segid-1].name = name;
+    }
     void dump()
     {
         writeln("Libraries:");
@@ -35,13 +44,19 @@ public:
         foreach(i, m; modules)
             writefln("\t#%d: %s (%s)", i+1, cast(string)m.name, m.libIndex ? cast(string)libraries[m.libIndex-1].name : "");
         writeln();
+        writeln("Segments:");
+        foreach(i, s; segments)
+        {
+            writefln("\t#%d: %s", i+1, cast(string)s.name);
+        }
+        writeln();
         writeln("Source files:");
         foreach(i, s; sourcefiles)
         {
             writefln("\t#%d: %s", i+1, cast(string)s.name);
             foreach(j, b; s.blocks)
             {
-                writefln("\t\t[0x%.8X..0x%.8X] (Seg #%d)", b.start, b.end, b.segid);
+                writefln("\t\t[0x%.8X..0x%.8X] (%s)", b.start, b.end, cast(string)segments[b.segid-1].name);
                 foreach(k, l; b.linnums)
                     writefln("\t\t\t0x%.8X: %d", l.offset, l.linnum);
             }
@@ -90,6 +105,16 @@ public:
     void addBlock(BlockInfo bi)
     {
         blocks ~= bi;
+    }
+}
+
+class DebugSegment
+{
+private:
+    immutable(ubyte)[] name;
+public:
+    this()
+    {
     }
 }
 

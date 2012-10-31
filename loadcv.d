@@ -238,6 +238,7 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
                 debugfln("\t\tClass name: 0x%.4X", v.iClassName);
                 debugfln("\t\tOffset: 0x%.8X", v.offset);
                 debugfln("\t\tLength: 0x%.8X", v.cbseg);
+                di.addSegment(new DebugSegment());
             }
             break;
         case sstSegName:
@@ -248,6 +249,7 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
                 count++;
                 auto name = f.readZString();
                 debugfln("\tSegment %d: %s", count, cast(string)name);
+                di.setSegmentName(count, name);
             }
             break;
         case sstAlignSym:
