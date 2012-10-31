@@ -238,7 +238,18 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
                 debugfln("\t\tClass name: 0x%.4X", v.iClassName);
                 debugfln("\t\tOffset: 0x%.8X", v.offset);
                 debugfln("\t\tLength: 0x%.8X", v.cbseg);
-                di.addSegment(new DebugSegment());
+                assert(v.ovl == 0);
+                assert(v.iClassName == 0xFFFF);
+                assert(v.offset == 0);
+                auto fRead = (v.flags & 0x1) != 0;
+                auto fWrite = (v.flags & 0x2) != 0;
+                auto fExecute = (v.flags & 0x4) != 0;
+                auto f32Bit = (v.flags & 0x8) != 0;
+                auto fSel = (v.flags & 0x100) != 0;
+                auto fAbs = (v.flags & 0x200) != 0;
+                auto fGroup = (v.flags & 0x1000) != 0;
+                assert(f32Bit && fSel && !fAbs && !fGroup);
+                di.addSegment(new DebugSegment(v.cbseg));
             }
             break;
         case sstSegName:

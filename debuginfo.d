@@ -48,6 +48,7 @@ public:
         foreach(i, s; segments)
         {
             writefln("\t#%d: %s", i+1, cast(string)s.name);
+            writefln("\t\t0x%.8X bytes", s.length);
         }
         writeln();
         writeln("Source files:");
@@ -112,9 +113,11 @@ class DebugSegment
 {
 private:
     immutable(ubyte)[] name;
+    uint length;
 public:
-    this()
+    this(uint length)
     {
+        this.length = length;
     }
 }
 
