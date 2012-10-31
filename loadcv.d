@@ -7,7 +7,7 @@ import debuginfo;
 
 private:
 
-debug=LOADCV;
+//debug=LOADCV;
 
 void debugfln(T...)(T args)
 {
@@ -64,6 +64,7 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
             debugfln("CV sstModule: %s", cast(string)name);
             if (iLib)
                 debugfln("\tFrom lib #%d", iLib);
+            di.addModule(new DebugModule(name, iLib));
             break;
         case sstSrcModule:
             debugfln("CV sstSrcModule");
@@ -127,8 +128,10 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
             auto count = 1;
             while ((len = f.read!ubyte()) != 0)
             {
-                debugfln("\tLib #%d: %s", count, cast(string)f.readBytes(len));
+                auto name = f.readBytes(len);
+                debugfln("\tLib #%d: %s", count, cast(string)name);
                 count++;
+                di.addLibrary(new DebugLibrary(name));
             }
             break;
         case sstGlobalPub: // List of all public symbols

@@ -24,4 +24,6 @@ void main(string[] args)
 
     auto di = new DebugInfo();
     pe.loadDebugInfo(di);
+
+    di.dump();
 }
