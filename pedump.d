@@ -807,7 +807,7 @@ void dumpTypeLeaf(ref File of, DataFile f)
     case LF_LIST:
     case LF_DERIVED:
     case LF_BITFIELD:
-    case LF_METHODLIST:
+    case LF_MLIST:
     case LF_DIMCONU:
     case LF_DIMCONLU:
     case LF_DIMVARU:

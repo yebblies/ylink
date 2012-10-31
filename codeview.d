@@ -123,7 +123,7 @@ enum : ushort
     LF_FIELDLIST  = 0x0204,
     LF_DERIVED    = 0x0205,
     LF_BITFIELD   = 0x0206,
-    LF_METHODLIST = 0x0207,
+    LF_MLIST      = 0x0207,
     LF_DIMCONU    = 0x0208,
     LF_DIMCONLU   = 0x0209,
     LF_DIMVARU    = 0x020A,
