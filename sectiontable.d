@@ -82,10 +82,10 @@ final class SectionTable
         offset = (offset + Import.length + segAlign - 1) & ~(segAlign - 1);
         fileOffset += Import.length;
 
-        //auto Export = new Segment(SegmentType.Export, offset, fileOffset);
-        //segAppend(Export, sections[SectionClass.EData]);
-        //offset = (offset + Export.length + segAlign - 1) & ~(segAlign - 1);
-        //fileOffset = (fileOffset + Import.length + fileAlign - 1) & ~(fileAlign - 1);
+        auto Export = new Segment(SegmentType.Export, offset, fileOffset);
+        segAppend(Export, sections[SectionClass.EData]);
+        offset = (offset + Export.length + segAlign - 1) & ~(segAlign - 1);
+        fileOffset = (fileOffset + Import.length + fileAlign - 1) & ~(fileAlign - 1);
 
         auto Text = new Segment(SegmentType.Text, offset, fileOffset);
         segAppend(Text, sections[SectionClass.Code]);
@@ -116,7 +116,7 @@ final class SectionTable
         offset = (offset + BSS.length + segAlign - 1) & ~(segAlign - 1);
 
         Import.allocate(segAlign);
-        //Export.allocate(segAlign);
+        Export.allocate(segAlign);
         Text.allocate(segAlign);
         TLS.allocate(segAlign);
         Data.allocate(segAlign);
@@ -124,7 +124,7 @@ final class SectionTable
 
         size_t segid = 0;
         if (Import.length) Import.segid = segid++;
-        //if (Export.length) Export.segid = segid++;
+        if (Export.length) Export.segid = segid++;
         if (Text.length) Text.segid = segid++;
         if (TLS.length) TLS.segid = segid++;
         if (Data.length) Data.segid = segid++;
@@ -132,7 +132,7 @@ final class SectionTable
         if (BSS.length) BSS.segid = segid++;
 
         if (Import.length) segs[SegmentType.Import] = Import;
-        //if (Export.length) segs[SegmentType.Export] = Export;
+        if (Export.length) segs[SegmentType.Export] = Export;
         if (Text.length) segs[SegmentType.Text] = Text;
         if (TLS.length) segs[SegmentType.TLS] = TLS;
         if (Data.length) segs[SegmentType.Data] = Data;

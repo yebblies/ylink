@@ -16,6 +16,7 @@ enum SectionClass
     DEBTYP,
     // generated
     IData,
+    EData,
 }
 
 enum SectionAlign
