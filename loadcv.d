@@ -1,5 +1,7 @@
 
+import std.conv;
 import std.stdio;
+import std.string;
 
 import codeview;
 import datafile;
@@ -37,6 +39,8 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
     assert(dirheader.lfoNextDir == 0);
     assert(dirheader.flags == 0);
     debugfln("Found %d subsections", dirheader.cDir);
+
+    loadCodeViewPredefinedTypes(di);
 
     foreach(i; 0..dirheader.cDir)
     {
@@ -291,11 +295,147 @@ void loadSymbol(DataFile f, DebugInfo di)
     f.seek(f.tell() + len - 2);
 }
 
-void loadType(DataFile f, DebugInfo di)
+void loadCodeViewPredefinedTypes(DebugInfo di)
 {
+    foreach(i; 0..0x1000)
+    {
+        DebugType t;
+        switch(i)
+        {
+        case T_VOID: t = new DebugTypeBasic(BT_VOID); break;
+        case T_32PVOID: t = new DebugTypePointer(new DebugTypeBasic(BT_VOID)); break;
+        case 0x78: t = new DebugTypeBasic(BT_DCHAR); break;
+        case T_RCHAR: t = new DebugTypeBasic(BT_CHAR); break;
+        case T_INT4: t = new DebugTypeBasic(BT_INT); break;
+        case T_UINT4: t = new DebugTypeBasic(BT_UINT); break;
+        case T_BOOL08: t = new DebugTypeBasic(BT_BOOL); break;
+        default:
+            break;
+        }
+        di.addType(t);
+    }
 }
 
-version(none):
+void loadType(DataFile f, DebugInfo di)
+{
+    auto len = f.read!ushort();
+    auto start = f.tell();
+    while (f.tell() < start + len)
+    {
+        auto t = loadTypeLeaf(f, di);
+        di.addType(t);
+    }
+}
+
+DebugType loadTypeLeaf(DataFile f, DebugInfo di)
+{
+    DebugType t;
+    auto type = f.read!ushort();
+    switch (type)
+    {
+    case LF_MODIFIER:
+        debugfln("\tLF_MODIFIER");
+        auto attr = f.read!ushort();
+        auto ptype = f.read!ushort();
+        debugfln("\t\ttype: %s", decodeCVType(ptype));
+        debugfln("\t\tattr:%s%s%s", (attr & 0x1) ? " const" : "", (attr & 0x2) ? " volatile" : "", (attr & 0x4) ? " unaligned" : "");
+        t = di.getType(ptype).copy();
+        if (attr & 0x1) t.modifiers |= M_CONST;
+        if (attr & 0x2) t.modifiers |= M_VOLATILE;
+        if (attr & 0x4) t.modifiers |= M_UNALIGNED;
+        break;
+
+    case LF_OEM:
+        debugfln("\tLF_OEM");
+        auto OEMid = f.read!ushort();
+        auto recOEM = f.read!ushort();
+        auto count = f.read!ushort();
+        auto indices = cast(ushort[])f.readBytes(ushort.sizeof * count);
+        debugfln("\t\tOEM id: 0x%.4X", OEMid);
+        debugfln("\t\ttype id: 0x%.4X", recOEM);
+        foreach(ind; indices)
+            debugfln("\t\tsubtype: %s", decodeCVType(ind));
+        assert(OEMid == 0x0042);
+        switch (recOEM == 0x0001)
+        {
+        case 0x0001: // Dynamic array
+            assert(count == 2);
+            assert(indices[0] == T_LONG);
+            t = di.getType(indices[1]);
+            t = new DebugTypeDArray(t);
+            break;
+        default:
+            assert(0, "Unrecognized OEM leaf type");
+        }
+        break;
+
+    case LF_ARGLIST:
+        debugfln("\tLF_ARGLIST");
+        auto count = f.read!ushort();
+        debugfln("\t\t%d args", count);
+        DebugType[] ts;
+        foreach(i; 0..count)
+        {
+            auto typind = f.read!ushort();
+            debugfln("\t\t%s", decodeCVType(typind));
+            ts ~= di.getType(typind);
+        }
+        t = new DebugTypeList(ts);
+        break;
+
+    case LF_PROCEDURE:
+        debugfln("\tLF_PROCEDURE");
+        auto rettype = f.read!ushort();
+        auto cc = f.read!ubyte();
+        auto reserved = f.read!ubyte();
+        auto argcount = f.read!ushort();
+        auto arglist = f.read!ushort();
+        debugfln("\t\tReturn type: %s", decodeCVType(rettype));
+        debugfln("\t\tCalling convention: %d", cc);
+        debugfln("\t\tArg count: %d", argcount);
+        debugfln("\t\tArg list: %s", decodeCVType(arglist));
+        auto tr = di.getType(rettype);
+        auto at = di.getType(arglist);
+        t = new DebugTypeFunction(tr, at);
+        break;
+
+    case LF_POINTER:
+        debugfln("\tLF_POINTER");
+        auto attr = f.read!ushort();
+        auto ptype = f.read!ushort();
+        debugfln("\t\ttype: %s", decodeCVType(ptype));
+        debugfln("\t\tattr: %.4X", attr);
+        auto size = attr & 0x1F;
+        assert(size == 0xA);
+        auto ptrmode = (attr >> 5) & 0x3;
+        t = di.getType(ptype);
+        switch(ptrmode)
+        {
+        case 0:
+            debugfln("\t\tmode: pointer");
+            t = new DebugTypePointer(t);
+            break;
+        case 1:
+            debugfln("\t\tmode: reference");
+            t = new DebugTypeReference(t);
+            break;
+        default:
+            assert(0);
+        }
+        if (attr & 0x1) t.modifiers |= M_CONST;
+        if (attr & 0x2) t.modifiers |= M_VOLATILE;
+        if (attr & 0x4) t.modifiers |= M_UNALIGNED;
+        break;
+
+    default:
+        debugfln("Unknown CV4 Leaf Type: 0x%.8X", type);
+        assert(0);
+    }
+    return t;
+}
+
+version(none)
+{
 
 void dumpSymbol(ref File of, DataFile f)
 {
@@ -503,6 +643,11 @@ void dumpSymbol(ref File of, DataFile f)
         break;
     }
 }
+
+}
+
+version(none)
+{
 
 void dumpType(ref File of, DataFile f)
 {
@@ -748,6 +893,8 @@ void dumpFieldLeaf(ref File of, DataFile f)
 string decodeAttrib(ushort attrib)
 {
     return "<<attrib>>";
+}
+
 }
 
 string decodeCVType(ushort typeind)
