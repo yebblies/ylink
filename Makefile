@@ -13,7 +13,7 @@ MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d
 
 PEDUMP=pedump.exe
-PEDUMPSRC=pedump.d coffdef.d datafile.d codeview.d pefile.d executablefile.d debuginfo.d
+PEDUMPSRC=pedump.d coffdef.d datafile.d codeview.d pefile.d executablefile.d debuginfo.d loadcv.d
 
 #DEBUGFLAGS=-debug=fixup -debug=OMFDATA
 #DEBUGFLAGS=-debug=OMFDEBUG -debug=OMFDATA

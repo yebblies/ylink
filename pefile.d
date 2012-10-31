@@ -7,6 +7,7 @@ import coffdef;
 import datafile;
 import debuginfo;
 import executablefile;
+import loadcv;
 
 final class PEFile : ExecutableFile
 {
@@ -236,6 +237,7 @@ public:
             if (dd.SizeOfData)
             {
                 debugfln("Debug section contains data");
+                loadCodeView(f, dd.PointerToRawData, di);
             }
         }
     }
