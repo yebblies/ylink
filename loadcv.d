@@ -89,6 +89,11 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
                 segindex[j] = f.read!ushort();
             f.alignto(4);
 
+            foreach(j; 0..cSeg)
+            {
+                debugfln("Seg %d (%d) at 0x%.8X..0x%.8X", j, segindex[j], segstart[j], segend[j]);
+            }
+
             // File Info
             foreach(j, fileoff; filebase)
             {
@@ -103,24 +108,30 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
                 debugfln("\tLine maps: %(0x%.8X, %)", baseSrcLn);
                 debugfln("\tSegs: %(%(0x%.8X..%), %)", startend);
 
-                di.addSourceFile(new DebugSourceFile(name));
+                auto s = new DebugSourceFile(name);
 
                 foreach(k, off; baseSrcLn)
                 {
                     f.seek(lfaBase + entry.lfo + off);
-                    debugfln("\tLine numbers in segment %d:", k);
+                    debugfln("\tLine numbers in block %d:", k);
                     auto Segi = f.read!ushort();
                     auto cPair = f.read!ushort();
                     auto offset = cast(uint[])f.readBytes(uint.sizeof*cPair);
                     auto linenum = cast(ushort[])f.readBytes(ushort.sizeof*cPair);
-                    foreach(l; 0..cPair)
-                        debugfln("\t\t0x%.8X: %d", offset[l], linenum[l]);
-                }
-            }
 
-            foreach(j; 0..cSeg)
-            {
-                debugfln("Seg %d (%d) at 0x%.8X..0x%.8X", j, segindex[j], segstart[j], segend[j]);
+                    BlockInfo bi;
+                    bi.segid = Segi;
+                    bi.start = startend[k][0];
+                    bi.end = startend[k][1];
+
+                    foreach(l; 0..cPair)
+                    {
+                        debugfln("\t\t0x%.8X: %d Seg #%d", offset[l], linenum[l], Segi);
+                        bi.linnums ~= LineInfo(offset[l], linenum[l]);
+                    }
+                    s.addBlock(bi);
+                }
+                di.addSourceFile(s);
             }
             break;
         case sstLibraries:

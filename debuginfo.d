@@ -37,7 +37,15 @@ public:
         writeln();
         writeln("Source files:");
         foreach(i, s; sourcefiles)
+        {
             writefln("\t#%d: %s", i+1, cast(string)s.name);
+            foreach(j, b; s.blocks)
+            {
+                writefln("\t\t[0x%.8X..0x%.8X] (Seg #%d)", b.start, b.end, b.segid);
+                foreach(k, l; b.linnums)
+                    writefln("\t\t\t0x%.8X: %d", l.offset, l.linnum);
+            }
+        }
         writeln();
     }
 }
@@ -72,10 +80,29 @@ class DebugSourceFile
 {
 private:
     immutable(ubyte)[] name;
+    BlockInfo[] blocks;
 
 public:
     this(immutable(ubyte)[] name)
     {
         this.name = name;
     }
+    void addBlock(BlockInfo bi)
+    {
+        blocks ~= bi;
+    }
+}
+
+struct BlockInfo
+{
+    size_t segid;
+    uint start;
+    uint end;
+    LineInfo[] linnums;
+}
+
+struct LineInfo
+{
+    uint offset;
+    uint linnum;
 }
