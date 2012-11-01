@@ -664,8 +664,15 @@ DebugType loadTypeLeaf(DataFile f)
         foreach(i; 0..count)
         {
             auto typind = f.read!ushort();
-            debugfln("\t\t%s", decodeCVType(typind));
-            ts ~= new DebugTypeIndex(typind);
+            if (typind >= 0x1000) // optlink sucks
+            {
+                debugfln("\t\t%s", decodeCVType(typind));
+                ts ~= new DebugTypeIndex(typind);
+            }
+            else
+            {
+                debugfln("\t\t!!Corrupt LF_DERIVED entry!");
+            }
         }
         t = new DebugTypeList(ts);
         break;
