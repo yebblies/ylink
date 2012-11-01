@@ -529,6 +529,12 @@ DebugType loadTypeLeaf(DataFile f)
                 auto ft = new DebugTypeIndex(ftype);
                 ts ~= new DebugTypeField(ft, -1, name);
                 break;
+            case LF_FRIENDCLS:
+                debugfln("\t\tLF_FRIENDCLS");
+                auto ctype = f.read!ushort();
+                debugfln("\t\t\tFriend class: %s", decodeCVType(ctype));
+                ts ~= new DebugTypeIndex(ctype);
+                break;
             default:
                 assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(fdtype, 16));
             }
