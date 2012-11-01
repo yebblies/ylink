@@ -10,6 +10,7 @@ import debuginfo;
 private:
 
 debug=LOADCV;
+debug=CVTYPES;
 
 void debugfln(T...)(T args)
 {
@@ -314,6 +315,15 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
         default:
             debugfln("Unhandled CV subsection type 0x%.3X", entry.subsection);
             assert(0);
+        }
+    }
+
+    debug(CVTYPES)
+    foreach(i, t; types)
+    {
+        if (t)
+        {
+            debugfln("Type #%d: %s", i, t);
         }
     }
 }

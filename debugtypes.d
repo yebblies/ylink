@@ -24,6 +24,13 @@ abstract class DebugType
         }
         return this;
     }
+    abstract void toString(scope void delegate(const(char)[]) sink) const;
+    void modToString(scope void delegate(const(char)[]) sink) const
+    {
+        if (modifiers & M_CONST) sink(" const");
+        if (modifiers & M_VOLATILE) sink(" volatile");
+        if (modifiers & M_UNALIGNED) sink(" unaligned");
+    }
 }
 
 enum
@@ -49,6 +56,29 @@ enum
     BT_CREAL,
 }
 
+immutable basicNames =
+[
+    "void",
+    "char",
+    "wchar",
+    "dchar",
+    "bool",
+    "byte",
+    "ubyte",
+    "short",
+    "ushort",
+    "int",
+    "uint",
+    "long",
+    "ulong",
+    "float",
+    "double",
+    "real",
+    "cfloat",
+    "cdouble",
+    "creal",
+];
+
 class DebugTypeBasic : DebugType
 {
     uint bt;
@@ -63,6 +93,11 @@ class DebugTypeBasic : DebugType
     DebugType resolve(DebugType[] types)
     {
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        sink(basicNames[bt]);
+        modToString(sink);
     }
 }
 
@@ -82,6 +117,12 @@ class DebugTypePointer : DebugType
         ntype = ntype.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        ntype.toString(sink);
+        sink("*");
+        modToString(sink);
+    }
 }
 
 class DebugTypeReference : DebugType
@@ -99,6 +140,12 @@ class DebugTypeReference : DebugType
     {
         ntype = ntype.resolve(types);
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        ntype.toString(sink);
+        sink("&");
+        modToString(sink);
     }
 }
 
@@ -128,6 +175,25 @@ class DebugTypeFunction : DebugType
         if (thistype) thistype = thistype.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        rtype.toString(sink);
+        sink(" function");
+        atype.toString(sink);
+        if (classtype)
+        {
+            sink(" class(");
+            classtype.toString(sink);
+            sink(")");
+        }
+        if (thistype)
+        {
+            sink(" this(");
+            thistype.toString(sink);
+            sink(")");
+        }
+        modToString(sink);
+    }
 }
 
 class DebugTypeArray : DebugType
@@ -145,6 +211,12 @@ class DebugTypeArray : DebugType
     {
         etype = etype.resolve(types);
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        etype.toString(sink);
+        sink("[]");
+        modToString(sink);
     }
 }
 
@@ -164,6 +236,12 @@ class DebugTypeDArray : DebugType
         etype = etype.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        etype.toString(sink);
+        sink("[?]");
+        modToString(sink);
+    }
 }
 
 class DebugTypeList : DebugType
@@ -182,6 +260,18 @@ class DebugTypeList : DebugType
         foreach(ref t; this.types)
             t = t.resolve(types);
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        sink("(");
+        foreach(i, t; types)
+        {
+            t.toString(sink);
+            if (i != types.length - 1)
+                sink(", ");
+        }
+        sink(")");
+        assert(!modifiers);
     }
 }
 
@@ -207,6 +297,10 @@ class DebugTypeUnion : DebugType
         if (fields) fields = fields.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
+    }
 }
 
 class DebugTypeStruct : DebugType
@@ -227,6 +321,11 @@ class DebugTypeStruct : DebugType
         if (fields) fields = fields.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        sink(cast(string)name);
+        modToString(sink);
+    }
 }
 
 class DebugTypeClass : DebugType
@@ -246,6 +345,11 @@ class DebugTypeClass : DebugType
     {
         if (fields) fields = fields.resolve(types);
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        sink(cast(string)name);
+        modToString(sink);
     }
 }
 
@@ -268,6 +372,17 @@ class DebugTypeField : DebugType
     {
         type = type.resolve(types);
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        sink("field(");
+        sink(cast(string)name);
+        sink(", ");
+        type.toString(sink);
+        sink(", +");
+        sink(to!string(offset));
+        sink(")");
+        modToString(sink);
     }
 }
 
@@ -292,6 +407,10 @@ class DebugTypeIndex : DebugType
         ///assert(types[id], "Undefined type 0x" ~ to!string(id, 16));
         return types[id].addMod(modifiers);
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
+    }
 }
 
 class DebugTypeMemberList : DebugType
@@ -313,6 +432,17 @@ class DebugTypeMemberList : DebugType
             t = t.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        sink("(");
+        foreach(i, t; types)
+        {
+            t.toString(sink);
+            if (i != types.length + 1)
+                sink(" ");
+        }
+        sink(")");
+    }
 }
 
 class DebugTypeVTBLShape : DebugType
@@ -329,6 +459,10 @@ class DebugTypeVTBLShape : DebugType
     override DebugType resolve(DebugType[] types)
     {
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
     }
 }
 
@@ -350,6 +484,10 @@ class DebugTypeBaseClass : DebugType
         ctype = ctype.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
+    }
 }
 
 class DebugTypeEnumMember : DebugType
@@ -370,6 +508,10 @@ class DebugTypeEnumMember : DebugType
     override DebugType resolve(DebugType[] types)
     {
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
     }
 }
 
@@ -396,6 +538,10 @@ class DebugTypeEnum : DebugType
         mlist = mlist.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
+    }
 }
 
 class DebugTypeNested : DebugType
@@ -415,6 +561,10 @@ class DebugTypeNested : DebugType
     {
         ctype = ctype.resolve(types);
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
     }
 }
 
@@ -438,6 +588,10 @@ class DebugTypeBitfield : DebugType
         ftype = ftype.resolve(types);
         return this;
     }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
+    }
 }
 
 class DebugTypeError : DebugType
@@ -454,6 +608,10 @@ class DebugTypeError : DebugType
     DebugType resolve(DebugType[] types)
     {
         return this;
+    }
+    override void toString(scope void delegate(const(char)[]) sink) const
+    {
+        assert(0);
     }
 }
 
