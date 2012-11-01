@@ -323,3 +323,58 @@ class DebugTypeBaseClass : DebugType
         return this;
     }
 }
+
+class DebugTypeEnumMember : DebugType
+{
+    immutable(ubyte)[] name;
+    DebugValue value;
+    ushort attr;
+    this(immutable(ubyte)[] name, DebugValue value, ushort attr)
+    {
+        this.name = name;
+        this.value = value;
+        this.attr = attr;
+    }
+    override DebugTypeEnumMember copy()
+    {
+        assert(0);
+    }
+    override DebugType resolve(DebugType[] types)
+    {
+        return this;
+    }
+}
+
+///////////////////////////////////////
+
+class DebugValue
+{
+    long intVal()
+    {
+        assert(0);
+    }
+    T as(T)()
+    {
+        T t = cast(T)intVal();
+        assert(t == intVal);
+        return t;
+    }
+    abstract string toString();
+}
+
+class DebugValueInt : DebugValue
+{
+    long v;
+    this(long v)
+    {
+        this.v  = v;
+    }
+    override long intVal()
+    {
+        return v;
+    }
+    override string toString()
+    {
+        return to!string(v);
+    }
+}

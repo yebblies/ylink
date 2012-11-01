@@ -438,7 +438,7 @@ DebugType loadTypeLeaf(DataFile f)
         auto prop = f.read!ushort();
         auto dlist = f.read!ushort();
         auto vtbl = f.read!ushort();
-        auto size = f.read!ushort();
+        auto size = readNumericLeaf(f);
         auto name = f.readPreString();
         debugfln("\t\tName: %s", cast(string)name);
         debugfln("\t\tMembers: %d", count);
@@ -482,10 +482,10 @@ DebugType loadTypeLeaf(DataFile f)
             case LF_MEMBER:
                 debugfln("\t\tLF_MEMBER");
                 auto ftype = f.read!ushort();
-                auto attrib = f.read!ushort();
-                auto offset = f.read!ushort();
+                auto attr = f.read!ushort();
+                auto offset = readNumericLeaf(f).as!uint();
                 auto name = f.readPreString();
-                debugfln("\t\t\tMember: %s (+%s) (%s)", cast(string)name, offset, decodeAttrib(attrib));
+                debugfln("\t\t\tMember: %s (+%s) (%s)", cast(string)name, offset, decodeAttrib(attr));
                 auto ft = new DebugTypeIndex(ftype);
                 auto dft = new DebugTypeField(ft, offset, name);
                 //di.addType(dft);
@@ -513,6 +513,14 @@ DebugType loadTypeLeaf(DataFile f)
                 auto vtype = f.read!ushort();
                 debugfln("\t\t\tVtbl: %s", decodeCVType(vtype));
                 ts ~= new DebugTypeIndex(vtype);
+                break;
+            case LF_ENUMERATE:
+                debugfln("\t\tLF_ENUMERATE");
+                auto attr = f.read!ushort();
+                auto value = readNumericLeaf(f);
+                auto name = f.readPreString();
+                debugfln("\t\t\tEnum member: %s = %s (%s)", cast(string)name, value, decodeAttrib(attr));
+                ts ~= new DebugTypeEnumMember(name, value, attr);
                 break;
             default:
                 assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(fdtype, 16));
@@ -587,6 +595,26 @@ DebugType loadTypeLeaf(DataFile f)
         assert(0);
     }
     return t;
+}
+
+DebugValue readNumericLeaf(DataFile f)
+{
+    auto v = f.read!ushort();
+    if (v < LF_NUMERIC)
+    {
+        return new DebugValueInt(v);
+    }
+    switch(v)
+    {
+    case LF_CHAR: return new DebugValueInt(f.read!byte());
+    case LF_SHORT: return new DebugValueInt(f.read!short());
+    case LF_USHORT: return new DebugValueInt(f.read!ushort());
+    case LF_LONG: return new DebugValueInt(f.read!int());
+    case LF_ULONG: return new DebugValueInt(f.read!uint());
+    case LF_QUADWORD: return new DebugValueInt(f.read!long());
+    case LF_UQUADWORD: return new DebugValueInt(f.read!ulong());
+    default: assert(0);
+    }
 }
 
 version(none)
@@ -812,10 +840,10 @@ string decodeAttrib(ushort attr)
     case 3: r = "public"; break;
     default: assert(0);
     }
-    if (r.length) r ~= " ";
+    if (r.length && ((attr >> 2) & 7)) r ~= " ";
     switch((attr >> 2) & 7)
     {
-    case 0: r = r[0..$-1]; break;
+    case 0: break;
     case 1: r ~= "virtual"; break;
     case 2: r ~= "static"; break;
     case 3: r ~= "friend"; break;
