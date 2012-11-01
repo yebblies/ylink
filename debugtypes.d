@@ -284,8 +284,12 @@ class DebugTypeIndex : DebugType
     }
     override DebugType resolve(DebugType[] types)
     {
-        assert(id <= types.length);
-        assert(types[id], "Undefined type 0x" ~ to!string(id, 16));
+        if (id >= types.length || !types[id])
+        {
+            return new DebugTypeError(id);
+        }
+        //assert(id < types.length);
+        ///assert(types[id], "Undefined type 0x" ~ to!string(id, 16));
         return types[id].addMod(modifiers);
     }
 }
@@ -432,6 +436,23 @@ class DebugTypeBitfield : DebugType
     DebugType resolve(DebugType[] types)
     {
         ftype = ftype.resolve(types);
+        return this;
+    }
+}
+
+class DebugTypeError : DebugType
+{
+    ushort id;
+    this(ushort id)
+    {
+        this.id = id;
+    }
+    override DebugTypeError copy()
+    {
+        assert(0);
+    }
+    DebugType resolve(DebugType[] types)
+    {
         return this;
     }
 }
