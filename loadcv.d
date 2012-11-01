@@ -590,6 +590,23 @@ DebugType loadTypeLeaf(DataFile f)
         t = new DebugTypeVTBLShape(flags);
         break;
 
+    case LF_ENUM:
+        debugfln("\tLF_ENUM");
+        auto count = f.read!ushort();
+        auto btype = f.read!ushort();
+        auto mlist = f.read!ushort();
+        auto prop = f.read!ushort();
+        auto name = f.readPreString();
+        debugfln("\t\tName: %s", cast(string)name);
+        debugfln("\t\tBase type: %s", decodeCVType(btype));
+        debugfln("\t\tCount: %d", count);
+        debugfln("\t\tMembers: %s", decodeCVType(mlist));
+        debugfln("\t\tProperties: 0x%.4X", prop);
+        auto bt = new DebugTypeIndex(btype);
+        auto mt = new DebugTypeIndex(mlist);
+        t = new DebugTypeEnum(name, bt, mt, prop);
+        break;
+
     default:
         debugfln("Unknown CV4 Leaf Type: 0x%.8X", type);
         assert(0);

@@ -345,6 +345,31 @@ class DebugTypeEnumMember : DebugType
     }
 }
 
+class DebugTypeEnum : DebugType
+{
+    immutable(ubyte)[] name;
+    DebugType btype;
+    DebugType mlist;
+    ushort prop;
+    this(immutable(ubyte)[] name, DebugType btype, DebugType mlist, ushort prop)
+    {
+        this.name = name;
+        this.btype = btype;
+        this.mlist = mlist;
+        this.prop = prop;
+    }
+    override DebugTypeEnum copy()
+    {
+        assert(0);
+    }
+    override DebugType resolve(DebugType[] types)
+    {
+        btype = btype.resolve(types);
+        mlist = mlist.resolve(types);
+        return this;
+    }
+}
+
 ///////////////////////////////////////
 
 class DebugValue
