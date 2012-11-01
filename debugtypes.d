@@ -187,14 +187,16 @@ class DebugTypeList : DebugType
 
 class DebugTypeStruct : DebugType
 {
+    immutable(ubyte)[] name;
     DebugType fields;
-    this(DebugType fields)
+    this(immutable(ubyte)[] name, DebugType fields)
     {
+        this.name = name;
         this.fields = fields;
     }
     override DebugTypeStruct copy()
     {
-        return new DebugTypeStruct(fields);
+        return new DebugTypeStruct(name, fields);
     }
     DebugType resolve(DebugType[] types)
     {
@@ -205,14 +207,16 @@ class DebugTypeStruct : DebugType
 
 class DebugTypeClass : DebugType
 {
+    immutable(ubyte)[] name;
     DebugType fields;
-    this(DebugType fields)
+    this(immutable(ubyte)[] name, DebugType fields)
     {
+        this.name = name;
         this.fields = fields;
     }
     override DebugTypeClass copy()
     {
-        return new DebugTypeClass(fields);
+        return new DebugTypeClass(name, fields);
     }
     DebugType resolve(DebugType[] types)
     {

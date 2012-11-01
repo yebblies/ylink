@@ -451,9 +451,9 @@ DebugType loadTypeLeaf(DataFile f)
         if (count)
             fields = new DebugTypeIndex(ftype);
         if (type == LF_STRUCTURE)
-            t = new DebugTypeStruct(fields);
+            t = new DebugTypeStruct(name, fields);
         else
-            t = new DebugTypeClass(fields);
+            t = new DebugTypeClass(name, fields);
         break;
 
     case LF_ARRAY:
@@ -508,6 +508,12 @@ DebugType loadTypeLeaf(DataFile f)
                 auto ct = new DebugTypeIndex(ctype);
                 ts ~= new DebugTypeBaseClass(ct, attr);
                 break;
+            case LF_VFUNCTAB:
+                debugfln("\t\tLF_VFUNCTAB");
+                auto vtype = f.read!ushort();
+                debugfln("\t\t\tVtbl: %s", decodeCVType(vtype));
+                ts ~= new DebugTypeIndex(vtype);
+                break;
             default:
                 assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(fdtype, 16));
             }
@@ -556,7 +562,7 @@ DebugType loadTypeLeaf(DataFile f)
             uint offset;
             if (mprop == 4)
                 offset = f.read!uint();
-            debugfln("\t\tAttr: 0x%.4X", attr);
+            debugfln("\t\tAttr: %s", decodeAttrib(attr));
             debugfln("\t\tType: %s", decodeCVType(ftype));
             debugfln("\t\tOffset: 0x%.8X", offset);
             offsets ~= offsets;
@@ -797,31 +803,31 @@ void dumpSymbol(ref File of, DataFile f)
 
 string decodeAttrib(ushort attr)
 {
-    string priv;
+    string r;
     switch(attr & 3)
     {
-    case 0: priv = ""; break;
-    case 1: priv = " private"; break;
-    case 2: priv = " protected"; break;
-    case 3: priv = " public"; break;
+    case 0: r = ""; break;
+    case 1: r = "private"; break;
+    case 2: r = "protected"; break;
+    case 3: r = "public"; break;
     default: assert(0);
     }
-    string virt;
+    if (r.length) r ~= " ";
     switch((attr >> 2) & 7)
     {
-    case 0: virt = ""; break;
-    case 1: virt = " virtual"; break;
-    case 2: virt = " static"; break;
-    case 3: virt = " friend"; break;
-    case 4: virt = " virtual-i"; break;
-    case 5: virt = " virtual-p"; break;
-    case 6: virt = " virtual-ip"; break;
+    case 0: r = r[0..$-1]; break;
+    case 1: r ~= "virtual"; break;
+    case 2: r ~= "static"; break;
+    case 3: r ~= "friend"; break;
+    case 4: r ~= "virtual-i"; break;
+    case 5: r ~= "virtual-p"; break;
+    case 6: r ~= "virtual-ip"; break;
     default: assert(0);
     }
-    string isabstractfunc = ((attr >> 5) & 1) ? " abstract-func" : "";
-    string isfinal = ((attr >> 6) & 1) ? " final" : "";
-    string isabstractclass = ((attr >> 7) & 1) ? " abstract-class" : "";
-    return "attr:" ~ priv ~ virt ~ isabstractfunc ~ isfinal ~ isabstractclass;
+    if ((attr >> 5) & 1) r ~= " abstract-func";
+    if ((attr >> 6) & 1) r ~= " final";
+    if ((attr >> 7) & 1) r ~= " abstract-class";
+    return r;
 }
 
 string decodeCVType(ushort typeind)
