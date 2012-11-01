@@ -589,7 +589,7 @@ DebugType loadTypeLeaf(DataFile f)
             auto ftype = f.read!ushort();
             auto mprop = (attr >> 2) & 0x7;
             uint offset;
-            if (mprop == 4)
+            if (mprop == 4 || mprop == 6)
                 offset = f.read!uint();
             debugfln("\t\tAttr: %s", decodeAttrib(attr));
             debugfln("\t\tType: %s", decodeCVType(ftype));
