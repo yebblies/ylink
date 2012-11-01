@@ -644,6 +644,18 @@ DebugType loadTypeLeaf(DataFile f)
         t = new DebugTypeUnion(name, mt, size, prop);
         break;
 
+    case LF_BITFIELD:
+        debugfln("\tLF_BITFIELD");
+        auto len = f.read!ubyte();
+        auto pos = f.read!ubyte();
+        auto ftype = f.read!ushort();
+        debugfln("\t\tPos: %d", pos);
+        debugfln("\t\tBits: %d", len);
+        debugfln("\t\tType: %s", decodeCVType(ftype));
+        auto ft = new DebugTypeIndex(ftype);
+        t = new DebugTypeBitfield(ft, pos, len);
+        break;
+
     default:
         debugfln("Unknown CV4 Leaf Type: 0x%.8X", type);
         assert(0);

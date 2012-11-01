@@ -414,6 +414,28 @@ class DebugTypeNested : DebugType
     }
 }
 
+class DebugTypeBitfield : DebugType
+{
+    DebugType ftype;
+    ubyte pos;
+    ubyte len;
+    this(DebugType ftype, ubyte pos, ubyte len)
+    {
+        this.ftype = ftype;
+        this.pos = pos;
+        this.len = len;
+    }
+    override DebugTypeBitfield copy()
+    {
+        assert(0);
+    }
+    DebugType resolve(DebugType[] types)
+    {
+        ftype = ftype.resolve(types);
+        return this;
+    }
+}
+
 ///////////////////////////////////////
 
 class DebugValue
