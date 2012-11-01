@@ -31,10 +31,22 @@ int main()
     return c;
 }*/
 
-import std.stdio, std.conv;
+import std.stdio, std.conv, std.typetuple;
 
 void main(string[] args)
 {
+    foreach(T; TypeTuple!(char, wchar, dchar, bool, byte, ubyte, short, ushort, int, uint, long, ulong, float, double, real, ifloat, idouble, ireal, cfloat, cdouble, creal))
+    {
+        T a;
+        const T b;
+        immutable T c;
+        T* d;
+        const(T)* e;
+        immutable(T)* f;
+        const(T*) g;
+        immutable(T*) h;
+    }
+
     try
     {
         auto x = to!int(args[1]);

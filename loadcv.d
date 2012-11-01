@@ -48,13 +48,23 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
     types[T_32PVOID] = new DebugTypePointer(types[T_VOID]);
     types[T_RCHAR] = new DebugTypeBasic(BT_CHAR);
     types[T_32PRCHAR] = new DebugTypePointer(types[T_RCHAR]);
+    types[T_WCHAR] = new DebugTypeBasic(BT_WCHAR);
     types[0x78] = new DebugTypeBasic(BT_DCHAR);
+    types[T_CHAR] = new DebugTypeBasic(BT_BYTE);
     types[T_UCHAR] = new DebugTypeBasic(BT_UBYTE);
+    types[T_SHORT] = new DebugTypeBasic(BT_SHORT);
+    types[T_USHORT] = new DebugTypeBasic(BT_USHORT);
     types[T_INT4] = new DebugTypeBasic(BT_INT);
     types[T_UINT4] = new DebugTypeBasic(BT_UINT);
     types[T_QUAD] = new DebugTypeBasic(BT_LONG);
     types[T_UQUAD] = new DebugTypeBasic(BT_ULONG);
     types[T_BOOL08] = new DebugTypeBasic(BT_BOOL);
+    types[T_REAL32] = new DebugTypeBasic(BT_FLOAT);
+    types[T_REAL64] = new DebugTypeBasic(BT_DOUBLE);
+    types[T_REAL80] = new DebugTypeBasic(BT_REAL);
+    types[T_CPLX32] = new DebugTypeBasic(BT_CFLOAT);
+    types[T_CPLX64] = new DebugTypeBasic(BT_CDOUBLE);
+    types[T_CPLX80] = new DebugTypeBasic(BT_CREAL);
 
     foreach(i; 0..dirheader.cDir)
     {

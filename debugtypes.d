@@ -30,6 +30,7 @@ enum
 {
     BT_VOID,
     BT_CHAR,
+    BT_WCHAR,
     BT_DCHAR,
     BT_BOOL,
     BT_BYTE,
@@ -40,6 +41,12 @@ enum
     BT_UINT,
     BT_LONG,
     BT_ULONG,
+    BT_FLOAT,
+    BT_DOUBLE,
+    BT_REAL,
+    BT_CFLOAT,
+    BT_CDOUBLE,
+    BT_CREAL,
 }
 
 class DebugTypeBasic : DebugType
