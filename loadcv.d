@@ -656,6 +656,20 @@ DebugType loadTypeLeaf(DataFile f)
         t = new DebugTypeBitfield(ft, pos, len);
         break;
 
+    case LF_DERIVED:
+        debugfln("\tLF_DERIVED");
+        auto count = f.read!ushort();
+        debugfln("\t\t%d derived classes", count);
+        DebugType[] ts;
+        foreach(i; 0..count)
+        {
+            auto typind = f.read!ushort();
+            debugfln("\t\t%s", decodeCVType(typind));
+            ts ~= new DebugTypeIndex(typind);
+        }
+        t = new DebugTypeList(ts);
+        break;
+
     default:
         debugfln("Unknown CV4 Leaf Type: 0x%.8X", type);
         assert(0);
