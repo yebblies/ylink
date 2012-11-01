@@ -185,6 +185,30 @@ class DebugTypeList : DebugType
     }
 }
 
+class DebugTypeUnion : DebugType
+{
+    immutable(ubyte)[] name;
+    DebugType fields;
+    uint size;
+    ushort prop;
+    this(immutable(ubyte)[] name, DebugType fields, uint size, ushort prop)
+    {
+        this.name = name;
+        this.fields = fields;
+        this.size = size;
+        this.prop = prop;
+    }
+    override DebugTypeUnion copy()
+    {
+        return new DebugTypeUnion(name, fields, size, prop);
+    }
+    DebugType resolve(DebugType[] types)
+    {
+        if (fields) fields = fields.resolve(types);
+        return this;
+    }
+}
+
 class DebugTypeStruct : DebugType
 {
     immutable(ubyte)[] name;

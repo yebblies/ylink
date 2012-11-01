@@ -628,6 +628,22 @@ DebugType loadTypeLeaf(DataFile f)
         t = new DebugTypeEnum(name, bt, mt, prop);
         break;
 
+    case LF_UNION:
+        debugfln("\tLF_UNION");
+        auto count = f.read!ushort();
+        auto mlist = f.read!ushort();
+        auto prop = f.read!ushort();
+        auto size = readNumericLeaf(f).as!uint();
+        auto name = f.readPreString();
+        debugfln("\t\tName: %s", cast(string)name);
+        debugfln("\t\tCount: %d", count);
+        debugfln("\t\tMembers: %s", decodeCVType(mlist));
+        debugfln("\t\tProperties: 0x%.4X", prop);
+        debugfln("\t\tSize: 0x%.8X", size);
+        auto mt = new DebugTypeIndex(mlist);
+        t = new DebugTypeUnion(name, mt, size, prop);
+        break;
+
     default:
         debugfln("Unknown CV4 Leaf Type: 0x%.8X", type);
         assert(0);
