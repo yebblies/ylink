@@ -282,3 +282,20 @@ class DebugTypeMemberList : DebugType
         return this;
     }
 }
+
+class DebugTypeVTBLShape : DebugType
+{
+    ubyte[] flags;
+    this(ubyte[] flags)
+    {
+        this.flags = flags;
+    }
+    override DebugTypeVTBLShape copy()
+    {
+        assert(0);
+    }
+    override DebugType resolve(DebugType[] types)
+    {
+        return this;
+    }
+}

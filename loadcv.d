@@ -554,6 +554,18 @@ DebugType loadTypeLeaf(DataFile f)
         t = new DebugTypeMemberList(types, offsets);
         break;
 
+    case LF_VTSHAPE:
+        debugfln("\tLF_VTSHAPE");
+        auto count = f.read!ushort();
+        auto raw = f.readBytes((count+1)/2);
+        auto flags = new ubyte[](count);
+        foreach(i, ref v; flags)
+            v = (i & 1) ? (raw[i/2] >> 4) : (raw[i/2] & 0xF);
+        debugfln("\t\tCount: %d", count);
+        debugfln("\t\tFlags: %(0x%.1X %)", flags);
+        t = new DebugTypeVTBLShape(flags);
+        break;
+
     default:
         debugfln("Unknown CV4 Leaf Type: 0x%.8X", type);
         assert(0);
