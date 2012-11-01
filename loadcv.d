@@ -535,6 +535,14 @@ DebugType loadTypeLeaf(DataFile f)
                 debugfln("\t\t\tFriend class: %s", decodeCVType(ctype));
                 ts ~= new DebugTypeIndex(ctype);
                 break;
+            case LF_NESTEDTYPE:
+                debugfln("\t\tLF_NESTEDTYPE");
+                auto ctype = f.read!ushort();
+                auto name = f.readPreString();
+                debugfln("\t\t\tNested type: %s - %s", cast(string)name, decodeCVType(ctype));
+                auto ct = new DebugTypeIndex(ctype);
+                ts ~= new DebugTypeNested(name, ct);
+                break;
             default:
                 assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(fdtype, 16));
             }

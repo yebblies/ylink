@@ -139,7 +139,7 @@ enum : ushort
     LF_MEMBER     = 0x0406,
     LF_STMEMBER   = 0x0407,
     LF_METHOD     = 0x0408,
-    LF_NESTTYPE   = 0x0409,
+    LF_NESTEDTYPE = 0x0409,
     LF_VFUNCTAB   = 0x040A,
     LF_FRIENDCLS  = 0x040B,
     LF_ONEMETHOD  = 0x040C,

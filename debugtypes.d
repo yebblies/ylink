@@ -370,6 +370,26 @@ class DebugTypeEnum : DebugType
     }
 }
 
+class DebugTypeNested : DebugType
+{
+    immutable(ubyte)[] name;
+    DebugType ctype;
+    this(immutable(ubyte)[] name, DebugType ctype)
+    {
+        this.name = name;
+        this.ctype = ctype;
+    }
+    override DebugTypeNested copy()
+    {
+        assert(0);
+    }
+    DebugType resolve(DebugType[] types)
+    {
+        ctype = ctype.resolve(types);
+        return this;
+    }
+}
+
 ///////////////////////////////////////
 
 class DebugValue
