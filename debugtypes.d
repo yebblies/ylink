@@ -299,3 +299,23 @@ class DebugTypeVTBLShape : DebugType
         return this;
     }
 }
+
+class DebugTypeBaseClass : DebugType
+{
+    DebugType ctype;
+    ushort attr;
+    this(DebugType ctype, ushort attr)
+    {
+        this.ctype = ctype;
+        this.attr = attr;
+    }
+    override DebugTypeBaseClass copy()
+    {
+        assert(0);
+    }
+    override DebugType resolve(DebugType[] types)
+    {
+        ctype = ctype.resolve(types);
+        return this;
+    }
+}

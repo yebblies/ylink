@@ -480,23 +480,33 @@ DebugType loadTypeLeaf(DataFile f)
             switch (fdtype)
             {
             case LF_MEMBER:
+                debugfln("\t\tLF_MEMBER");
                 auto ftype = f.read!ushort();
-                auto attrib = decodeAttrib(f.read!ushort());
+                auto attrib = f.read!ushort();
                 auto offset = f.read!ushort();
                 auto name = f.readPreString();
-                debugfln("\t\tMember: %s (+%s) (%s)", cast(string)name, offset, attrib);
+                debugfln("\t\t\tMember: %s (+%s) (%s)", cast(string)name, offset, decodeAttrib(attrib));
                 auto ft = new DebugTypeIndex(ftype);
                 auto dft = new DebugTypeField(ft, offset, name);
                 //di.addType(dft);
                 ts ~= dft;
                 break;
             case LF_METHOD:
+                debugfln("\t\tLF_METHOD");
                 auto count = f.read!ushort();
                 auto mlist = f.read!ushort();
                 auto name = f.readPreString();
-                debugfln("\t\tMember functions: %s (%d)", cast(string)name, count);
+                debugfln("\t\t\tMember functions: %s (%d)", cast(string)name, count);
                 auto ft = new DebugTypeIndex(mlist);
                 ts ~= new DebugTypeField(ft, 0, name);
+                break;
+            case LF_BCLASS:
+                debugfln("\t\tLF_BCLASS");
+                auto ctype = f.read!ushort();
+                auto attr = f.read!ushort();
+                debugfln("\t\t\tBase class: %s - %s", decodeCVType(ctype), decodeAttrib(attr));
+                auto ct = new DebugTypeIndex(ctype);
+                ts ~= new DebugTypeBaseClass(ct, attr);
                 break;
             default:
                 assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(fdtype, 16));
@@ -785,9 +795,33 @@ void dumpSymbol(ref File of, DataFile f)
 
 }
 
-string decodeAttrib(ushort attrib)
+string decodeAttrib(ushort attr)
 {
-    return "<<attrib>>";
+    string priv;
+    switch(attr & 3)
+    {
+    case 0: priv = ""; break;
+    case 1: priv = " private"; break;
+    case 2: priv = " protected"; break;
+    case 3: priv = " public"; break;
+    default: assert(0);
+    }
+    string virt;
+    switch((attr >> 2) & 7)
+    {
+    case 0: virt = ""; break;
+    case 1: virt = " virtual"; break;
+    case 2: virt = " static"; break;
+    case 3: virt = " friend"; break;
+    case 4: virt = " virtual-i"; break;
+    case 5: virt = " virtual-p"; break;
+    case 6: virt = " virtual-ip"; break;
+    default: assert(0);
+    }
+    string isabstractfunc = ((attr >> 5) & 1) ? " abstract-func" : "";
+    string isfinal = ((attr >> 6) & 1) ? " final" : "";
+    string isabstractclass = ((attr >> 7) & 1) ? " abstract-class" : "";
+    return "attr:" ~ priv ~ virt ~ isabstractfunc ~ isfinal ~ isabstractclass;
 }
 
 string decodeCVType(ushort typeind)
