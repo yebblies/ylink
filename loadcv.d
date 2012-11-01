@@ -487,9 +487,7 @@ DebugType loadTypeLeaf(DataFile f)
                 auto name = f.readPreString();
                 debugfln("\t\t\tMember: %s (+%s) (%s)", cast(string)name, offset, decodeAttrib(attr));
                 auto ft = new DebugTypeIndex(ftype);
-                auto dft = new DebugTypeField(ft, offset, name);
-                //di.addType(dft);
-                ts ~= dft;
+                ts ~= new DebugTypeField(ft, offset, name);
                 break;
             case LF_METHOD:
                 debugfln("\t\tLF_METHOD");
@@ -498,7 +496,7 @@ DebugType loadTypeLeaf(DataFile f)
                 auto name = f.readPreString();
                 debugfln("\t\t\tMember functions: %s (%d)", cast(string)name, count);
                 auto ft = new DebugTypeIndex(mlist);
-                ts ~= new DebugTypeField(ft, 0, name);
+                ts ~= new DebugTypeField(ft, -1, name);
                 break;
             case LF_BCLASS:
                 debugfln("\t\tLF_BCLASS");
@@ -521,6 +519,15 @@ DebugType loadTypeLeaf(DataFile f)
                 auto name = f.readPreString();
                 debugfln("\t\t\tEnum member: %s = %s (%s)", cast(string)name, value, decodeAttrib(attr));
                 ts ~= new DebugTypeEnumMember(name, value, attr);
+                break;
+            case LF_STMEMBER:
+                debugfln("\t\tLF_STMEMBER");
+                auto ftype = f.read!ushort();
+                auto attr = f.read!ushort();
+                auto name = f.readPreString();
+                debugfln("\t\t\tStatic member: %s (%s)", cast(string)name, decodeAttrib(attr));
+                auto ft = new DebugTypeIndex(ftype);
+                ts ~= new DebugTypeField(ft, -1, name);
                 break;
             default:
                 assert(0, "Unknown CV4 Field Type: 0x" ~ to!string(fdtype, 16));
