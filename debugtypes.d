@@ -46,6 +46,8 @@ enum
     BT_USHORT,
     BT_INT,
     BT_UINT,
+    BT_CLONG,
+    BT_CULONG,
     BT_LONG,
     BT_ULONG,
     BT_FLOAT,
@@ -69,6 +71,8 @@ immutable basicNames =
     "ushort",
     "int",
     "uint",
+    "c_long",
+    "c_ulong",
     "long",
     "ulong",
     "float",
@@ -299,7 +303,8 @@ class DebugTypeUnion : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("union ");
+        sink(cast(string)name);
     }
 }
 
@@ -462,7 +467,14 @@ class DebugTypeVTBLShape : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("VTBL(");
+        foreach(i, f; flags)
+        {
+            sink(to!string(f, 16));
+            if (i != flags.length - 1)
+                sink(", ");
+        }
+        sink(")");
     }
 }
 
@@ -486,7 +498,11 @@ class DebugTypeBaseClass : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("BaseClass(");
+        ctype.toString(sink);
+        sink(", ");
+        sink(to!string(attr, 16));
+        sink(")");
     }
 }
 
@@ -511,7 +527,11 @@ class DebugTypeEnumMember : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("enum(");
+        sink(cast(string)name);
+        sink(" = ");
+        value.toString(sink);
+        sink(")");
     }
 }
 
@@ -540,7 +560,8 @@ class DebugTypeEnum : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("enum ");
+        sink(cast(string)name);
     }
 }
 
@@ -564,7 +585,11 @@ class DebugTypeNested : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("Nested(");
+        sink(cast(string)name);
+        sink(", ");
+        ctype.toString(sink);
+        sink(")");
     }
 }
 
@@ -590,7 +615,13 @@ class DebugTypeBitfield : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("Bitfield(");
+        ftype.toString(sink);
+        sink(", +");
+        sink(to!string(pos, 16));
+        sink(", ");
+        sink(to!string(len, 16));
+        sink(")");
     }
 }
 
@@ -611,7 +642,9 @@ class DebugTypeError : DebugType
     }
     override void toString(scope void delegate(const(char)[]) sink) const
     {
-        assert(0);
+        sink("__ERROR__(");
+        sink(to!string(id, 16));
+        sink(")");
     }
 }
 
@@ -629,7 +662,7 @@ class DebugValue
         assert(t == intVal);
         return t;
     }
-    abstract string toString();
+    abstract void toString(scope void delegate(const(char)[]) sink) const;
 }
 
 class DebugValueInt : DebugValue
@@ -643,8 +676,8 @@ class DebugValueInt : DebugValue
     {
         return v;
     }
-    override string toString()
+    override void toString(scope void delegate(const(char)[]) sink) const
     {
-        return to!string(v);
+        sink(to!string(v));
     }
 }

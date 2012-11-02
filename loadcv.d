@@ -45,10 +45,9 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
     DebugType[] types;
     typeoffsets.length = 4096;
     types.length = 4096;
+
     types[T_VOID] = new DebugTypeBasic(BT_VOID);
-    types[T_32PVOID] = new DebugTypePointer(types[T_VOID]);
     types[T_RCHAR] = new DebugTypeBasic(BT_CHAR);
-    types[T_32PRCHAR] = new DebugTypePointer(types[T_RCHAR]);
     types[T_WCHAR] = new DebugTypeBasic(BT_WCHAR);
     types[0x78] = new DebugTypeBasic(BT_DCHAR);
     types[T_CHAR] = new DebugTypeBasic(BT_BYTE);
@@ -57,6 +56,8 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
     types[T_USHORT] = new DebugTypeBasic(BT_USHORT);
     types[T_INT4] = new DebugTypeBasic(BT_INT);
     types[T_UINT4] = new DebugTypeBasic(BT_UINT);
+    types[T_LONG] = new DebugTypeBasic(BT_CLONG);
+    types[T_ULONG] = new DebugTypeBasic(BT_CULONG);
     types[T_QUAD] = new DebugTypeBasic(BT_LONG);
     types[T_UQUAD] = new DebugTypeBasic(BT_ULONG);
     types[T_BOOL08] = new DebugTypeBasic(BT_BOOL);
@@ -66,6 +67,28 @@ void loadCodeView(DataFile f, uint lfaBase, DebugInfo di)
     types[T_CPLX32] = new DebugTypeBasic(BT_CFLOAT);
     types[T_CPLX64] = new DebugTypeBasic(BT_CDOUBLE);
     types[T_CPLX80] = new DebugTypeBasic(BT_CREAL);
+
+    types[T_32PVOID] = new DebugTypePointer(types[T_VOID]);
+    types[T_32PRCHAR] = new DebugTypePointer(types[T_RCHAR]);
+    types[T_32PWCHAR] = new DebugTypePointer(types[T_WCHAR]);
+    types[0x478] = new DebugTypePointer(types[0x78]);
+    types[T_32PCHAR] = new DebugTypePointer(types[T_CHAR]);
+    types[T_32PUCHAR] = new DebugTypePointer(types[T_UCHAR]);
+    types[T_32PSHORT] = new DebugTypePointer(types[T_SHORT]);
+    types[T_32PUSHORT] = new DebugTypePointer(types[T_USHORT]);
+    types[T_32PINT4] = new DebugTypePointer(types[T_INT4]);
+    types[T_32PUINT4] = new DebugTypePointer(types[T_UINT4]);
+    types[T_32PLONG] = new DebugTypePointer(types[T_LONG]);
+    types[T_32PULONG] = new DebugTypePointer(types[T_ULONG]);
+    types[T_32PQUAD] = new DebugTypePointer(types[T_QUAD]);
+    types[T_32PUQUAD] = new DebugTypePointer(types[T_UQUAD]);
+    types[T_32PBOOL08] = new DebugTypePointer(types[T_BOOL08]);
+    types[T_32PREAL32] = new DebugTypePointer(types[T_REAL32]);
+    types[T_32PREAL64] = new DebugTypePointer(types[T_REAL64]);
+    types[T_32PREAL80] = new DebugTypePointer(types[T_REAL80]);
+    types[T_32PCPLX32] = new DebugTypePointer(types[T_CPLX32]);
+    types[T_32PCPLX64] = new DebugTypePointer(types[T_CPLX64]);
+    types[T_32PCPLX80] = new DebugTypePointer(types[T_CPLX80]);
 
     foreach(i; 0..dirheader.cDir)
     {
