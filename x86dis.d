@@ -236,6 +236,7 @@ string prefix(ubyte pre, ubyte *ptr)
         case 0x9E: return "SETLE imm16/32";
         case 0x9F: return "SETNLE imm16/32";
         case 0xA2: return "CPUID";
+        case 0xA3: return "BT r/m16/32 r16/32";
         case 0xAB: return "BTS " ~ modrm32(ptr+1);
         case 0xAC: return "SHRD r/m16/32 r16/32 imm8";
         case 0xAD: return "SHRD r/m16/32 r16/32 CL";
