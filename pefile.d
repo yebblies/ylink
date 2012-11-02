@@ -23,16 +23,16 @@ public:
         super(f.filename);
         this.f = f;
     }
-    void processFile(bool dodump)(File of)
+    void processFile(bool dodump)()
     {
         void debugfln(T...)(T args)
         {
             static if (dodump)
             {
                 static if (T.length)
-                    of.writefln(args);
+                    writefln(args);
                 else
-                    of.writeln();
+                    writeln();
             }
         }
         f.seek(0);
@@ -195,13 +195,13 @@ public:
         }
         debugfln();
     }
-    override void dump(ref File of)
+    override void dump()
     {
-        processFile!true(of);
+        processFile!true();
     }
     override void loadData()
     {
-        processFile!false(stdout);
+        processFile!false();
     }
     override void loadDebugInfo(DebugInfo di)
     {

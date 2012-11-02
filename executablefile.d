@@ -12,7 +12,7 @@ public:
     {
         this.name = name;
     }
-    void dump(ref File of);
+    void dump();
     void loadData();
     void loadDebugInfo(DebugInfo di);
 }

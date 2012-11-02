@@ -15,11 +15,12 @@ import pefile;
 void main(string[] args)
 {
     assert(args.length == 2 || args.length == 4 && args[2] == "-of");
-    auto of = args.length == 4 ? File(args[3], "w") : stdout;
+    if (args.length == 4)
+        stdout = File(args[3], "w");
     auto f = new DataFile(args[1].defaultExtension("exe"));
 
     auto pe = new PEFile(f);
-    pe.dump(of);
+    pe.dump();
     pe.loadData();
 
     auto di = new DebugInfo();
