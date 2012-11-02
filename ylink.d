@@ -43,14 +43,13 @@ void main(string[] args)
         default:
             switch(extension(args[i]))
             {
+            default:
+                args[i] = args[i].defaultExtension("obj");
             case ".obj":
                 if (!outputfile.length)
                     outputfile = args[i].setExtension("exe");
             case ".lib":
                 objectFilenames ~= args[i];
-                break;
-            default:
-                enforce(false, "Unknown file type: '" ~ args[i] ~ "'");
                 break;
             }
             break;

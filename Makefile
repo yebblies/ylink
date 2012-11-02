@@ -1,5 +1,11 @@
+
+LINKSRC=coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d
+
 YLINK=ylink.exe
-SRC=ylink.d coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d
+YLINKSRC=ylink.d $(LINKSRC)
+
+OLINK=olink.exe
+OLINKSRC=olink.d $(LINKSRC)
 
 DEBLINK=deblink.exe
 DEBLINKSRC=deblink.d windebug.d x86dis.d
@@ -21,8 +27,11 @@ DEBUGFLAGS=
 
 default: test
 
-$(YLINK): $(SRC)
-	dmd -of$(YLINK) $(SRC) $(DEBUGFLAGS)
+$(YLINK): $(YLINKSRC)
+	dmd -of$(YLINK) $(YLINKSRC) $(DEBUGFLAGS)
+
+$(OLINK): $(OLINKSRC)
+	dmd -of$(OLINK) $(OLINKSRC) $(DEBUGFLAGS)
 
 $(DEBLINK): $(DEBLINKSRC)
 	dmd -of$(DEBLINK) $(DEBLINKSRC) psapi.lib
@@ -42,8 +51,9 @@ testd.obj: testd.d
 testd.exe testd.map: $(TESTOBJ)
 	link /MAP $(TESTOBJ),testd.exe/CO/NOI
 
-teste.exe teste.map: $(TESTOBJ) $(YLINK)
-	$(YLINK) $(TESTOBJ) -o teste.exe -m
+teste.exe teste.map: $(TESTOBJ) $(OLINK)
+	$(OLINK) /MAP $(TESTOBJ),teste.exe/CO/NOI
+#	$(YLINK) $(TESTOBJ) -o teste.exe -m
 
 testd.sym: testd.map $(MAP2SYM)
 	$(MAP2SYM) testd.map testd.sym

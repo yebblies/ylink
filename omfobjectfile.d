@@ -690,7 +690,7 @@ public:
                 {
                     auto linnum = getWordLE(data);
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
-                    writeln(cast(string)sourcefile, "(", linnum, "): ", cast(string)sections[baseSeg-1].name, "+", offset);
+                    debug(OMFDEBUG) writeln(cast(string)sourcefile, "(", linnum, "): ", cast(string)sections[baseSeg-1].name, "+", offset);
                 }
                 break;
             case OmfRecordType.LINSYM16:
@@ -704,7 +704,7 @@ public:
                 {
                     auto linnum = getWordLE(data);
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
-                    writeln(cast(string)sourcefile, "(", linnum, "): _TEXT$", cast(string)names[name-1], "+", offset);
+                    debug(OMFDEBUG) writeln(cast(string)sourcefile, "(", linnum, "): _TEXT$", cast(string)names[name-1], "+", offset);
                 }
                 assert(!flags);
                 break;
