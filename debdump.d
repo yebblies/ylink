@@ -8,10 +8,10 @@ import std.string;
 import x86dis;
 import windebug;
 
-void main()
+void main(string[] args)
 {
-    dump("p0.txt", "testd.sym", "log0.txt");
-    dump("p1.txt", "teste.sym", "log1.txt");
+    assert(args.length == 4);
+    dump(args[1], args[2], args[3]);
 }
 
 string[uint] getSyms(string fn)

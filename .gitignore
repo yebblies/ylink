@@ -6,4 +6,5 @@
 *.log
 *.def
 *.sym
-log.txt
+*.txt
+*.trace

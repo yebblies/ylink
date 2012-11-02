@@ -13,7 +13,7 @@ DEBLINKSRC=deblink.d windebug.d x86dis.d
 DEBDUMP=debdump.exe
 DEBDUMPSRC=debdump.d x86dis.d
 
-TESTOBJ=testd.obj
+TESTOBJ=testc.obj
 
 MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d
@@ -61,11 +61,19 @@ testd.sym: testd.map $(MAP2SYM)
 teste.sym: teste.map
 	copy teste.map teste.sym
 
-p0.txt p1.txt: $(YLINK) $(DEBLINK) testd.exe teste.exe testd.sym teste.sym
-	$(DEBLINK)
+testd.trace: $(DEBLINK) testd.exe
+	$(DEBLINK) testd.exe -of testd.trace
 
-test: $(DEBDUMP) p0.txt p1.txt
-	debdump
+teste.trace: $(DEBLINK) teste.exe teste.sym
+	$(DEBLINK) teste.exe -of teste.trace
+
+testd.log: $(DEBDUMP) testd.trace testd.sym
+	debdump testd.trace testd.sym testd.log
+
+teste.log: $(DEBDUMP) teste.trace teste.sym
+	debdump teste.trace teste.sym teste.log
+
+test: testd.log teste.log
 
 $(PEDUMP): $(PEDUMPSRC)
 	dmd -of$(PEDUMP) $(PEDUMPSRC) -debug=LOADPE
@@ -81,3 +89,4 @@ clean:
 	-del *.obj
 	-del *.txt
 	-del *.sym
+	-del *.trace

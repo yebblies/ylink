@@ -31,39 +31,29 @@ void* getStartAddress(HANDLE p)
     assert(0);
 }
 
-void main()
+void main(string[] args)
 {
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi0;
-    PROCESS_INFORMATION pi1;
-    HANDLE[DWORD] threads;
-    HANDLE[DWORD] processes;
-    bool[DWORD] firstException;
-    int processCount;
-    File*[DWORD] output;
-    ubyte[DWORD] replaced;
-
-    enforce(CreateProcessA("testd.exe", null, null, null, false, DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, null, null, &si, &pi0));
-    threads[pi0.dwThreadId] = pi0.hThread;
-    processes[pi0.dwProcessId] = pi0.hProcess;
-    firstException[pi0.dwProcessId] = true;
-    processCount++;
-    output[pi0.dwProcessId] = new File("p0.txt", "wb");
-
-    if (1)
+    assert(args.length == 2 || args.length == 4);
+    auto of = stdout;
+    if (args.length == 4)
     {
-        enforce(CreateProcessA("teste.exe", null, null, null, false, DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, null, null, &si, &pi1));
-        threads[pi1.dwThreadId] = pi1.hThread;
-        processes[pi1.dwProcessId] = pi1.hProcess;
-        firstException[pi1.dwProcessId] = true;
-        processCount++;
-        output[pi1.dwProcessId] = new File("p1.txt", "wb");
+        assert(args[2] == "-of");
+        of = File(args[3], "wb");
     }
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    HANDLE[DWORD] threads;
+    HANDLE phandle;
+    bool firstException;
+    bool quit;
+    ubyte replaced;
 
-    //ResumeThread(pi0.hThread);
-    //ResumeThread(pi1.hThread);
+    enforce(CreateProcessA(toStringz(args[1]), null, null, null, false, DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, null, null, &si, &pi));
+    threads[pi.dwThreadId] = pi.hThread;
+    phandle = pi.hProcess;
+    firstException = true;
 
-    while(processCount)
+    while(!quit)
     {
         DEBUG_EVENT de;
         if (WaitForDebugEvent(&de, INFINITE))
@@ -79,24 +69,24 @@ void main()
                 {
                 case EXCEPTION_BREAKPOINT:
                     //writeln("EXCEPTION_BREAKPOINT");
-                    if (firstException[de.dwProcessId])
+                    if (firstException)
                     {
-                        firstException[de.dwProcessId] = false;
+                        firstException = false;
                         // First breakpoint, somewhere in kernel land
-                        auto entrypoint = getStartAddress(processes[de.dwProcessId]);
+                        auto entrypoint = getStartAddress(phandle);
                         //writefln("Entry point found at %.8X", entrypoint);
                         ubyte rep;
-                        assert(ReadProcessMemory(processes[de.dwProcessId], entrypoint, &rep, 1, null));
-                        replaced[de.dwProcessId] = rep;
+                        assert(ReadProcessMemory(phandle, entrypoint, &rep, 1, null));
+                        replaced = rep;
                         rep = 0xCC;
-                        assert(WriteProcessMemory(processes[de.dwProcessId], entrypoint, &rep, 1, null));
+                        assert(WriteProcessMemory(phandle, entrypoint, &rep, 1, null));
                     }
                     else
                     {
                         // Second one, we placed it at the beginning of the program
                         //writefln("Removed from: %.8X", de.Exception.ExceptionRecord.ExceptionAddress);
-                        ubyte rep = replaced[de.dwProcessId];
-                        assert(WriteProcessMemory(processes[de.dwProcessId], de.Exception.ExceptionRecord.ExceptionAddress, &rep, 1, null));
+                        ubyte rep = replaced;
+                        assert(WriteProcessMemory(phandle, de.Exception.ExceptionRecord.ExceptionAddress, &rep, 1, null));
                         auto hThread = threads[de.dwThreadId];
                         CONTEXT context;
                         context.ContextFlags = CONTEXT_FULL;
@@ -109,33 +99,31 @@ void main()
                 case EXCEPTION_SINGLE_STEP:
                     //writeln("EXCEPTION_SINGLE_STEP");
                     auto hThread = threads[de.dwThreadId];
-                    auto fh = output[de.dwProcessId];
-                    //fh.writeln("Breakpoint in process ", de.dwProcessId);
+                    //writeln("Breakpoint in process ", de.dwProcessId);
                     CONTEXT context;
                     context.ContextFlags = CONTEXT_FULL;
                     enforce(GetThreadContext(hThread, &context), to!string(GetLastError()));
                     context.EFlags |= 0x100;
                     enforce(SetThreadContext(hThread, &context));
-                    //fh.rawWrite((&context.Edi)[0..12]);
+                    //rawWrite((&context.Edi)[0..12]);
                     ubyte[16] inst;
                     auto addr = de.Exception.ExceptionRecord.ExceptionAddress;
-                    ReadProcessMemory(processes[de.dwProcessId], addr, inst.ptr, 16, null);
-                    //fh.writefln("%.8X: %s (%s+0x%X)", addr, X86Disassemble(inst.ptr), func, cast(uint)addr-p);
-                    fh.writefln("%.8X %(%.2X%)", addr, inst[]);
-                    //fh.writeln(X86Disassemble(inst.ptr));
-                    //fh.rawWrite(inst[0..1]);
-                    //fh.writefln("Breakpoint EIP: %.8X ESP: %.8X EBP: %.8X", context.Eip, context.Esp, context.Ebp);
-                    //fh.writefln("           EAX: %.8X EBX: %.8X ECX: %.8X EDX: %.8X", context.Eax, context.Ebx, context.Ecx, context.Edx);
-                    //fh.writefln("        EFLAGS: %.8X ESI: %.8X EDI: %.8X", context.EFlags, context.Esi, context.Edi);
+                    ReadProcessMemory(phandle, addr, inst.ptr, 16, null);
+                    //writefln("%.8X: %s (%s+0x%X)", addr, X86Disassemble(inst.ptr), func, cast(uint)addr-p);
+                    of.writefln("%.8X %(%.2X%)", addr, inst[]);
+                    //writeln(X86Disassemble(inst.ptr));
+                    //rawWrite(inst[0..1]);
+                    //writefln("Breakpoint EIP: %.8X ESP: %.8X EBP: %.8X", context.Eip, context.Esp, context.Ebp);
+                    //writefln("           EAX: %.8X EBX: %.8X ECX: %.8X EDX: %.8X", context.Eax, context.Ebx, context.Ecx, context.Edx);
+                    //writefln("        EFLAGS: %.8X ESI: %.8X EDI: %.8X", context.EFlags, context.Esi, context.Edi);
                     break;
                 default:
                     cont = DBG_EXCEPTION_NOT_HANDLED;
-                    auto fh = output[de.dwProcessId];
                     auto addr = de.Exception.ExceptionRecord.ExceptionAddress;
                     auto code = de.Exception.ExceptionRecord.ExceptionCode;
                     ubyte[16] inst;
-                    ReadProcessMemory(processes[de.dwProcessId], addr, inst.ptr, 16, null);
-                    fh.writefln("%.8X %(%.2X%) %s %.8X", addr, inst[], "__Unknown_Exception__", cast(uint)code);
+                    ReadProcessMemory(phandle, addr, inst.ptr, 16, null);
+                    of.writefln("%.8X %(%.2X%) %s %.8X", addr, inst[], "__Unknown_Exception__", cast(uint)code);
                     break;
                 }
                 break;
@@ -150,8 +138,7 @@ void main()
                 break;
             case EXIT_PROCESS_DEBUG_EVENT:
                 writeln("EXIT_PROCESS_DEBUG_EVENT");
-                processCount--;
-                output[de.dwProcessId].close();
+                quit = true;
                 break;
             case LOAD_DLL_DEBUG_EVENT:
                 writeln("LOAD_DLL_DEBUG_EVENT");
