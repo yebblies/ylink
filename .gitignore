@@ -5,4 +5,5 @@
 *.asm
 *.log
 *.def
+*.sym
 log.txt

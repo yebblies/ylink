@@ -113,7 +113,7 @@ void main(string[] args)
     if (files[2].length)
         mapFilename = files[2][0].defaultExtension("map");
     else
-        mapFilename = files[0][0].setExtension("map");
+        mapFilename = outFilename.setExtension("map");
 
     foreach(f; files[3])
         objFilenames ~= f.defaultExtension("lib");
@@ -121,7 +121,7 @@ void main(string[] args)
     if (files[4].length)
         defFilename = files[4][0].defaultExtension("def");
     else
-        defFilename = files[0][0].setExtension("def");
+        defFilename = outFilename.setExtension("def");
 
     foreach(f; files[5])
         resFilenames ~= f.defaultExtension("res");

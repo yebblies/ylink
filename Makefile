@@ -80,3 +80,4 @@ clean:
 	-del *.exe
 	-del *.obj
 	-del *.txt
+	-del *.sym
