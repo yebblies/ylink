@@ -5,6 +5,7 @@ import std.exception;
 import std.file;
 import std.path;
 import std.stdio;
+import std.string;
 
 import linker;
 import objectfile;
@@ -41,22 +42,20 @@ void main(string[] args)
         auto i = 1;
         while (i < arg.length && arg[i] != '/' && arg[i] != ' ')
             i++;
-        switch(arg[0..i])
+        if (icmp(arg[0..i], "/MAP"))
         {
-        case "/MAP":
             map = true;
-            break;
-        case "/CO":
+        } else if (icmp(arg[0..i], "/CO"))
+        {
             codeview = true;
-            break;
-        case "/NOI":
-            break;
-        case "/DUMP":
+        } else if (icmp(arg[0..i], "/NOI"))
+        {
+        } else if (icmp(arg[0..i], "/DUMP"))
+        {
             dump = true;
-            break;
-        default:
+        } else
+        {
             assert(0, "Unrecognised switch: " ~ arg[0..i]);
-            break;
         }
         return i;
     }
