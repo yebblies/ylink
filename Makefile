@@ -8,12 +8,12 @@ OLINK=olink.exe
 OLINKSRC=olink.d $(LINKSRC)
 
 DEBLINK=deblink.exe
-DEBLINKSRC=deblink.d windebug.d x86dis.d
+DEBLINKSRC=deblink.d windebug.d
 
 DEBDUMP=debdump.exe
 DEBDUMPSRC=debdump.d x86dis.d
 
-TESTOBJ=testc.obj
+TESTOBJ=testd.obj
 
 MAP2SYM=map2sym.exe
 MAP2SYMSRC=map2sym.d
@@ -46,7 +46,7 @@ testc.obj: testc.c
 	dmc -c testc.c -g
 
 testd.obj: testd.d
-	dmd -c testd.d -g
+	dmd -c testd.d -g -cov
 
 testd.exe testd.map: $(TESTOBJ)
 	link /MAP $(TESTOBJ),testd.exe/CO/NOI
@@ -64,7 +64,7 @@ teste.sym: teste.map
 testd.trace: $(DEBLINK) testd.exe
 	$(DEBLINK) testd.exe -of testd.trace
 
-teste.trace: $(DEBLINK) teste.exe teste.sym
+teste.trace: $(DEBLINK) teste.exe
 	$(DEBLINK) teste.exe -of teste.trace
 
 testd.log: $(DEBDUMP) testd.trace testd.sym

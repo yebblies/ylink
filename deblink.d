@@ -9,8 +9,6 @@ import std.stdio;
 
 import windebug;
 
-import x86dis;
-
 void* getStartAddress(HANDLE p)
 {
     HMODULE[256] modules;
