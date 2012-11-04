@@ -75,9 +75,23 @@ final class SectionTable
     {
         foreach(secs; nameGroup)
         {
-            sort!("a.tag < b.tag", SwapStrategy.stable)(secs);
+            static int cmp(immutable(ubyte)[] a, immutable(ubyte)[] b)
+            {
+                import std.ascii;
+                if (!a.length || !b.length)
+                    return cast(int)a.length - cast(int)b.length;
+                if (a[0] == b[0])
+                    return cmp(a[1..$], b[1..$]);
+                if (isPunctuation(a[0]) == isPunctuation(b[0]))
+                    return cast(int)a[0] - cast(int)b[0];
+                return isPunctuation(a[0]) ? -1 : 1;
+            }
+            sort!((a, b) => cmp(a.tag, b.tag) < 0, SwapStrategy.stable)(secs);
             foreach(sec; secs)
+            {
+                //writefln("Appending %s:%s", cast(string)sec.name, cast(string)sec.tag);
                 seg.append(sec);
+            }
         }
     }
     Segment[SegmentType] allocateSegments(uint baseAddress, uint segAlign, uint fileAlign)
