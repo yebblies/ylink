@@ -112,9 +112,11 @@ void main(string[] args)
     if (files[1].length)
         outFilename = files[1][0].defaultExtension("exe");
     else
-        outFilename = files[0][0].setExtension("exe");
+        outFilename = files[0][0].baseName().setExtension("exe");
 
-    if (files[2].length)
+    if (files[2].length && !icmp(files[2][0].baseName().stripExtension(), "nul"))
+        map = false;
+    else if (files[2].length)
         mapFilename = files[2][0].defaultExtension("map");
     else
         mapFilename = outFilename.setExtension("map");
@@ -165,5 +167,5 @@ void main(string[] args)
     }
     buildPE(outFilename, segments, symtab);
     if (map)
-        symtab.makeMap(mapFilename.setExtension("map"));
+        symtab.makeMap(mapFilename);
 }
