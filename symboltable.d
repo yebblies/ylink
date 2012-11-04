@@ -279,11 +279,17 @@ final class SymbolTable
     }
     void defineSpecial(SectionTable sectab)
     {
+        auto textend = new Section(cast(immutable(ubyte)[])"__textend", SectionClass.Code, SectionAlign.align_1, 0);
         auto dataend = new Section(cast(immutable(ubyte)[])"__dataend", SectionClass.Data, SectionAlign.align_1, 0);
         auto bssend = new Section(cast(immutable(ubyte)[])"__bssend", SectionClass.BSS, SectionAlign.align_1, 0);
+        sectab.add(textend);
         sectab.add(dataend);
         sectab.add(bssend);
+        add(new PublicSymbol(textend, cast(immutable(ubyte)[])"_etext", 0));
+        add(new PublicSymbol(textend, cast(immutable(ubyte)[])"__etext", 0));
+        add(new PublicSymbol(dataend, cast(immutable(ubyte)[])"_edata", 0));
         add(new PublicSymbol(dataend, cast(immutable(ubyte)[])"__edata", 0));
+        add(new PublicSymbol(bssend, cast(immutable(ubyte)[])"_end", 0));
         add(new PublicSymbol(bssend, cast(immutable(ubyte)[])"__end", 0));
     }
     void allocateComdef(SectionTable sectab)
