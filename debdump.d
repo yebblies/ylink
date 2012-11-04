@@ -1,6 +1,7 @@
 
 import std.conv;
 import std.exception;
+import std.path;
 import std.process;
 import std.stdio;
 import std.string;
@@ -10,8 +11,11 @@ import windebug;
 
 void main(string[] args)
 {
-    assert(args.length == 4);
-    dump(args[1], args[2], args[3]);
+    assert(args.length < 2, "Usage: trace sym dest");
+    auto trace = args[1];
+    auto sym = args.length >= 3 ? args[2] : args[1].setExtension("sym");
+    auto dest = args.length >= 4 ? args[3] : args[1].setExtension("log");
+    dump(trace, sym, dest);
 }
 
 string[uint] getSyms(string fn)
@@ -32,7 +36,6 @@ void dump(string src, string symf, string dest)
 
     uint lastbase;
     bool u;
-    bool full;
 
     auto out0 = File(dest, "w");
     auto count = 0;
@@ -42,22 +45,18 @@ void dump(string src, string symf, string dest)
     while (!l0.empty && count < 1_000_000)
     {
         auto con0 = unpack(l0.front);
-        con0.expand(syms);
 
-        if (full)
+        if (con0.addr > 0x400_000 && con0.addr < 0x500_000)
         {
+            con0.expand(syms);
             out0.writefln("%.8X: %s (%s+0x%X)", con0.addr, X86Disassemble(con0.inst.ptr), con0.sym, con0.off);
         }
         else if (con0.addr < 0x400_000 || con0.addr > 0x500_000 && u)
         {
         }
-        else if (con0.sym == "__Dmain")
-        {
-            full = true;
-            count++;
-        }
         else if (lastbase != con0.addr - con0.off)
         {
+            con0.expand(syms);
             u = con0.sym == "__Unknown__";
             out0.writefln("%.8X: %s (%s+0x%X)", con0.addr, X86Disassemble(con0.inst.ptr), con0.sym, con0.off);
             lastbase = con0.addr - con0.off;
