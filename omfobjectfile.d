@@ -706,7 +706,6 @@ public:
                     auto offset = off16 ? getWordLE(data) : getDwordLE(data);
                     debug(OMFDEBUG) writeln(cast(string)sourcefile, "(", linnum, "): _TEXT$", cast(string)names[name-1], "+", offset);
                 }
-                assert(!flags);
                 break;
             case OmfRecordType.MODEND16:
             case OmfRecordType.MODEND32:
