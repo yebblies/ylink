@@ -134,7 +134,7 @@ public:
         {
             if (dd.VirtualAddress)
             {
-                debugfln("Data directory: ", ddnames[i]);
+                debugfln("Data directory: %s", ddnames[i]);
                 debugfln("\tVirtual address: 0x%.8X", dd.VirtualAddress);
                 debugfln("\tSize:            0x%.8X", dd.Size);
             }
