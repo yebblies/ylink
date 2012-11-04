@@ -14,6 +14,8 @@ enum SectionClass
     STACK,
     DEBSYM,
     DEBTYP,
+    // crt sections go at the start of _DATA
+    CRT,
     // generated
     IData,
     EData,

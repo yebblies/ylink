@@ -49,6 +49,17 @@ final class SectionTable
     }
     void dump()
     {
+        writeln();
+        foreach(secclass, nameGroups; sections)
+        {
+            writeln("%s segments:", secclass);
+            foreach(nameGroup; nameGroups)
+            {
+                writefln("%s: 0x%.8X", cast(string)nameGroup[0].name, nameGroup[0].base);
+            }
+        }
+        writeln();
+
         writeln("Section Table:");
         foreach(secclass, nameGroup; sections)
         {
@@ -71,7 +82,7 @@ final class SectionTable
     }
     Segment[SegmentType] allocateSegments(uint baseAddress, uint segAlign, uint fileAlign)
     {
-        //Import,Export,Text,TLS,Data,Const,BSS,Reloc,Debug,
+        //Import,Export,Text,TLS,CRT+Data,Const,BSS,Reloc,Debug,
         Segment[SegmentType] segs;
         auto offset = baseAddress + 0x1000;
         auto fileOffset = 0x400;
@@ -100,6 +111,7 @@ final class SectionTable
         fileOffset += TLS.length;
 
         auto Data = new Segment(SegmentType.Data, offset, fileOffset);
+        segAppend(Data, sections[SectionClass.CRT]);
         segAppend(Data, sections[SectionClass.Data]);
         Data.length = (Data.length + fileAlign - 1) & ~(fileAlign - 1);
         offset = (offset + Data.length + segAlign - 1) & ~(segAlign - 1);
