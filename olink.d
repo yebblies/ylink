@@ -40,28 +40,31 @@ void main(string[] args)
     {
         assert(arg[0] == '/');
         auto i = 1;
-        while (i < arg.length && arg[i] != '/' && arg[i] != ' ')
+        while (i < arg.length && arg[i] != '/' && arg[i] != ' ' && arg[i] != ';')
             i++;
-        if (icmp(arg[0..i], "/MAP"))
+        if (!icmp(arg[0..i], "/MAP") || !icmp(arg[0..i], "/M"))
         {
             map = true;
-        } else if (icmp(arg[0..i], "/CO"))
+        } else if (!icmp(arg[0..i], "/CO"))
         {
             codeview = true;
-        } else if (icmp(arg[0..i], "/NOI"))
+        } else if (!icmp(arg[0..i], "/NOI"))
         {
-        } else if (icmp(arg[0..i], "/DUMP"))
+        } else if (!icmp(arg[0..i], "/DUMP"))
         {
             dump = true;
         } else
         {
             assert(0, "Unrecognised switch: " ~ arg[0..i]);
         }
+        if (i < arg.length && arg[i] == ';')
+            i++;
         return i;
     }
 
     foreach(arg; args[1..$])
     {
+        //writeln("arg: ", arg);
         auto i = 0;
         if (arg[i] != '/' && files.length == 0)
         {
@@ -76,6 +79,7 @@ void main(string[] args)
                 }
                 if (arg[i] == '/' || arg[i] == ',')
                 {
+                    start = i+1;
                     files ~= current;
                     current = null;
                 }
