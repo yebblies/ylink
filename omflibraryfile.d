@@ -45,7 +45,8 @@ public:
         auto hdata = header.data;
         auto dict = getDwordLE(hdata);
         auto dictsize = getWordLE(hdata);
-        enforce(getByte(hdata) == 0x01, "Library must be case sensitive");
+        auto flags = getByte(hdata);
+        //enforce(flags == 0x01, "Library must be case sensitive");
 
         /*while (!f.empty() && f.peekByte() != 0xF1)
         {
