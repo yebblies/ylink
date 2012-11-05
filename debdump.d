@@ -11,7 +11,7 @@ import windebug;
 
 void main(string[] args)
 {
-    assert(args.length < 2, "Usage: trace sym dest");
+    assert(args.length >= 2, "Usage: trace sym dest");
     auto trace = args[1];
     auto sym = args.length >= 3 ? args[2] : args[1].setExtension("sym");
     auto dest = args.length >= 4 ? args[3] : args[1].setExtension("log");
