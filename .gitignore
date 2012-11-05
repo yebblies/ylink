@@ -8,3 +8,5 @@
 *.sym
 *.txt
 *.trace
+*.dump
+*.lst

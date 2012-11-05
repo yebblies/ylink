@@ -78,11 +78,13 @@ test: testd.log teste.log
 $(PEDUMP): $(PEDUMPSRC)
 	dmd -of$(PEDUMP) $(PEDUMPSRC) -debug=LOADPE
 
-dump: pe0.txt pe1.txt
+dump: testd.dump teste.dump
 
-pe0.txt pe1.txt: $(PEDUMP) testd.exe teste.exe
-	$(PEDUMP) testd.exe -of pe0.txt
-	$(PEDUMP) teste.exe -of pe1.txt
+testd.dump: $(PEDUMP) testd.exe
+	$(PEDUMP) testd.exe -of testd.dump
+
+teste.dump: $(PEDUMP) teste.exe
+	$(PEDUMP) teste.exe -of teste.dump
 
 clean:
 	-del *.exe
@@ -90,3 +92,6 @@ clean:
 	-del *.txt
 	-del *.sym
 	-del *.trace
+	-del *.dump
+	-del *.log
+	-del *.lst
