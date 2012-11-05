@@ -179,7 +179,10 @@ final class SymbolTable
         offset += dirEntrySize; // null entry
         // Import Lookup Tables
         foreach(lib, syms; imports)
+        {
+            //writefln("lib %s - %d symbols", cast(string)lib, syms.length);
             offset += (syms.length + 1) * importEntrySize;
+        }
         // Hint-Name Table
         foreach(lib, syms; imports)
         {
@@ -193,14 +196,15 @@ final class SymbolTable
             foreach(sym; syms)
             {
                 auto s = new PublicSymbol(sec, cast(immutable(ubyte)[])"__imp_" ~ sym.name, offset);
+                //writefln("Import: %s at %.8X", cast(string)sym.name, offset);
                 offset += importEntrySize;
                 this.add(s);
                 sym.sec = tsec;
                 sym.offset = toffset;
                 toffset += 6;
             }
+            offset += importEntrySize;
         }
-        offset += importEntrySize; // null entry
         sec.length = offset;
         //writeln("Defined import segment: ", offset, " bytes");
         sectab.add(sec);
@@ -241,7 +245,10 @@ final class SymbolTable
         auto idataVA = base + idataRVA;
         uint totalImports;
         foreach(lib, syms; imports)
+        {
+            //writefln("lib %s - %d symbols", cast(string)lib, syms.length);
             totalImports += syms.length + 1;
+        }
         uint directoryOffset = 0;
         uint lookupOffset = (imports.length + 1) * 5 * 4;
         uint hintOffset = lookupOffset + (totalImports * 4);
@@ -263,6 +270,7 @@ final class SymbolTable
             writeDwordLE(directoryOffset, addressOffset + idataRVA);
             foreach(sym; syms)
             {
+                //writefln("Import: %s at %.8X", cast(string)sym.name, addressOffset);
                 auto tsec = sym.sec;
                 auto tdata = tsec.data;
                 tdata[sym.offset..sym.offset+2] = [0xFF, 0x25];
