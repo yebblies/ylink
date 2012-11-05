@@ -249,6 +249,8 @@ string prefix(ubyte pre, ubyte *ptr)
         case 0xBF: return "MOVSX r16/32 r/m16";
         case 0xC0: return "XADD r/m8 r8";
         case 0xC1: return "XADD r/m16/32 r16/32";
+        case 0xC8: .. case 0xCF:
+            return "BSWAP " ~ regname32[op - 0xC8];
         default:
             writefln("Unknown opcode: %.2X %.2X", pre, op);
             assert(0);
