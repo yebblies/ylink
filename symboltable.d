@@ -248,7 +248,8 @@ final class SymbolTable
         uint libHintOffset = hintOffset;
         foreach(lib, syms; imports)
             foreach(sym; syms)
-                libHintOffset += (3 + sym.expName.length + 1) & ~1;
+                if (sym.expName.length)
+                    libHintOffset += (3 + sym.expName.length + 1) & ~1;
         uint addressOffset = libHintOffset;
         foreach(lib, syms; imports)
             addressOffset += (1 + lib.length + 1) & ~1;
@@ -266,10 +267,17 @@ final class SymbolTable
                 auto tdata = tsec.data;
                 tdata[sym.offset..sym.offset+2] = [0xFF, 0x25];
                 (cast(uint[])tdata[sym.offset+2..sym.offset+6])[0] = addressOffset + idataVA;
-                assert(sym.expName.length, "Ordinal imports are not yet supported");
-                writeDwordLE(lookupOffset, hintOffset + idataRVA);
-                writeDwordLE(addressOffset, hintOffset + idataRVA);
-                writeHint(hintOffset, sym.expName);
+                if (sym.expName.length)
+                {
+                    writeDwordLE(lookupOffset, hintOffset + idataRVA);
+                    writeDwordLE(addressOffset, hintOffset + idataRVA);
+                    writeHint(hintOffset, sym.expName);
+                }
+                else
+                {
+                    writeDwordLE(lookupOffset, 0x80000000 | sym.expOrd);
+                    writeDwordLE(addressOffset, 0x80000000 | sym.expOrd);
+                }
             }
             lookupOffset += 4;
             addressOffset += 4;
