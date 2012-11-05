@@ -22,6 +22,7 @@ void main(string[] args)
     auto pe = new PEFile(f);
     pe.dump();
     pe.loadData();
+    pe.dumpImports();
 
     auto di = new DebugInfo();
     pe.loadDebugInfo(di);

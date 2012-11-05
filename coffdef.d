@@ -239,3 +239,13 @@ enum : uint
     IMAGE_DEBUG_TYPE_RESERVED10 = 10,
     IMAGE_DEBUG_TYPE_CLSID = 11,
 }
+
+struct ImportDirectory
+{
+align(1):
+    uint ImportLookupTable;
+    uint TimeDateStamp;
+    uint ForwarderChain;
+    uint Name;
+    uint ImportAddressTable;
+}

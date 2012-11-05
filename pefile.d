@@ -241,4 +241,75 @@ public:
             }
         }
     }
+    void dumpImports()
+    {
+        void debugfln(T...)(T args)
+        {
+            static if (T.length)
+                writefln(args);
+            else
+                writeln();
+        }
+        if (dds.ImportTable.VirtualAddress && dds.ImportTable.Size)
+        {
+            debugfln("Has an import table");
+            SectionHeader imphead;
+            foreach(ref sechead; secheads)
+                if (sechead.VirtualAddress == dds.ImportTable.VirtualAddress)
+                    imphead = sechead;
+            assert(imphead.VirtualAddress == dds.ImportTable.VirtualAddress);
+            f.seek(imphead.PointerToRawData);
+            auto rva = imphead.PointerToRawData - imphead.VirtualAddress;
+
+            ImportDirectory[] ids;
+            while(true)
+            {
+                auto id = f.read!ImportDirectory();
+                if (id.ImportLookupTable)
+                    ids ~= id;
+                else
+                    break;
+            }
+            foreach(id; ids)
+            {
+                f.seek(id.Name + rva);
+                auto name = cast(string)f.readZString();
+                f.seek(id.ImportLookupTable + rva);
+                uint[] lookups;
+                while(true)
+                {
+                    auto l = f.read!uint();
+                    if (l)
+                        lookups ~= l;
+                    else
+                        break;
+                }
+                f.seek(id.ImportAddressTable + rva);
+                uint[] addresses;
+                while(true)
+                {
+                    auto a = f.read!uint();
+                    if (a)
+                        addresses ~= a;
+                    else
+                        break;
+                }
+                string[] names;
+                assert(lookups == addresses);
+                foreach(a; addresses)
+                {
+                    if (!(a & 0x80000000))
+                    {
+                        f.seek(a + rva + 2);
+                        names ~= cast(string)f.readZString();
+                    }
+                    else
+                        names ~= "@" ~ to!string(a & ~0x80000000);
+                }
+                debugfln("Library: %s", name);
+                foreach(i; 0..addresses.length)
+                    debugfln("\t%d = %s", i, names[i]);
+            }
+        }
+    }
 }
