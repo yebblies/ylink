@@ -142,10 +142,14 @@ void main(string[] args)
     while (!queue.empty())
     {
         auto filename = queue.pop();
-        enforce(paths.search(filename), "File not found: " ~ filename);
-        auto object = ObjectFile.detectFormat(filename);
-        enforce(object, "Unknown object file format: " ~ filename);
-        object.loadSymbols(symtab, sectab, queue, objects);
+        if (!paths.search(filename))
+            writeln("Warning - File not found: " ~ filename);
+        else
+        {
+            auto object = ObjectFile.detectFormat(filename);
+            enforce(object, "Unknown object file format: " ~ filename);
+            object.loadSymbols(symtab, sectab, queue, objects);
+        }
     }
     symtab.defineImports(sectab);
     symtab.allocateComdef(sectab);
