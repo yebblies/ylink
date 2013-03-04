@@ -114,6 +114,9 @@ public:
                         //writeln("IMPDEF int:", cast(string)intname, " mod:", cast(string)modname, " ent:", isOrdinal ? to!string(entryOrd) : cast(string)expname);
                         symtab.add(new ImportSymbol(modname, entryOrd, intname, expname));
                         break;
+                    case 0x02: // EXPDEF
+                        enforce(false, "COMENT EXPDEF not supported");
+                        break;
                     default:
                         enforce(false, "COMENT A0 subtype " ~ to!string(subtype, 16) ~ " not supported");
                         break;
@@ -192,7 +195,7 @@ public:
                 auto sec = new Section(names[name-1], secclass, secalign, length);
                 sections ~= sec;
                 sectab.add(sec);
-                //writeln("SEGDEF (", sections.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length, " align:", secalign);
+                debug(OMFDATA) writeln("SEGDEF (", sections.length, ") name:", cast(string)names[name-1], " class:", cast(string)names[cname-1], " length:", length, " align:", secalign);
                 break;
             case OmfRecordType.GRPDEF:
                 OmfGroup group;
