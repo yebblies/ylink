@@ -23,6 +23,9 @@ string[uint] getSyms(string fn)
     string[uint] r;
     foreach(l; File(fn, "r").byLine())
     {
+        foreach(ref char c; l)
+            if (c >= 0x80)
+                c = '?';
         auto x = split(l);
         r[to!uint(x[0], 16)] = x[1].idup;
     }
