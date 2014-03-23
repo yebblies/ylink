@@ -45,9 +45,11 @@ void main(string[] args)
             {
             default:
                 args[i] = args[i].defaultExtension("obj");
+                goto case;
             case ".obj":
                 if (!outputfile.length)
                     outputfile = args[i].setExtension("exe");
+                goto case;
             case ".lib":
                 objectFilenames ~= args[i];
                 break;
