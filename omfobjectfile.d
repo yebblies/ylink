@@ -164,8 +164,8 @@ public:
                 {
                 case 5:
                     secalign = SectionAlign.align_1;
-                case 2, 4, 7:
-                case 0:
+                    break;
+                case 2, 4, 7, 0:
                     break;
                 default:
                     enforce(false, "Section combination not supported: " ~ to!string(C));

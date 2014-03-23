@@ -31,7 +31,7 @@ public:
     {
         auto d = data[pos..pos+2];
         pos += 2;
-        return getWordLE(d);;
+        return getWordLE(d);
     }
     uint readDwordLE()
     {
