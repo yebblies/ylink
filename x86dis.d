@@ -179,7 +179,7 @@ string X86Disassemble(ubyte *ptr)
     case 0xE2: return "LOOP ECX, EIP" ~ readoff!byte(ptr+1);
     case 0xE8: return "CALL EIP" ~ readoff!int(ptr+1);
     case 0xE9: return "JMP EIP" ~ readoff!int(ptr+1);
-    case 0xEB: return "JMP EIP" ~ readoff!byte(ptr+1);;
+    case 0xEB: return "JMP EIP" ~ readoff!byte(ptr+1);
     case 0xF0: return prefix(op, ptr+1);
     case 0xF2: return prefix(op, ptr+1);
     case 0xF3: return prefix(op, ptr+1);
@@ -255,7 +255,6 @@ string prefix(ubyte pre, ubyte *ptr)
             writefln("Unknown opcode: %.2X %.2X", pre, op);
             assert(0);
         }
-        break;
     case 0xF0:
         return "LOCK " ~ X86Disassemble(ptr);
     case 0xF2:
@@ -303,7 +302,6 @@ string modrm32(ubyte* ptr)
         {
             return regname32[reg2] ~ ", [" ~ regname32[reg1] ~ "]";
         }
-        break;
     case 1: // [reg+8]
         return regname32[reg2] ~ ", [" ~ regname32[reg1] ~ readoff!byte(ptr+1) ~ "]";
     case 2: // [reg+16]
