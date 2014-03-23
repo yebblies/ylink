@@ -69,7 +69,7 @@ void buildPE(string filename, Segment[SegmentType] segments, SymbolTable symtab)
         Subsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI;
         DllCharacteristics = 0x0000;
         SizeOfStackReserve = 0x00100000;
-        SizeOfStackCommit = 0x00001000;;
+        SizeOfStackCommit = 0x00001000;
         SizeOfHeapReserve = 0x00100000;
         SizeOfHeapCommit = 0x00001000;
         LoaderFlags = 0x00000000;
