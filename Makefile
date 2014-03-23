@@ -28,19 +28,19 @@ DEBUGFLAGS=
 default: test
 
 $(YLINK): $(YLINKSRC)
-	dmd -of$(YLINK) $(YLINKSRC) $(DEBUGFLAGS)
+	dmd -g -of$(YLINK) $(YLINKSRC) $(DEBUGFLAGS)
 
 $(OLINK): $(OLINKSRC)
-	dmd -of$(OLINK) $(OLINKSRC) $(DEBUGFLAGS)
+	dmd -g -of$(OLINK) $(OLINKSRC) $(DEBUGFLAGS)
 
 $(DEBLINK): $(DEBLINKSRC)
-	dmd -of$(DEBLINK) $(DEBLINKSRC) psapi.lib
+	dmd -g -of$(DEBLINK) $(DEBLINKSRC) psapi.lib
 
 $(DEBDUMP): $(DEBDUMPSRC)
-	dmd -of$(DEBDUMP) $(DEBDUMPSRC)
+	dmd -g -of$(DEBDUMP) $(DEBDUMPSRC)
 
 $(MAP2SYM): $(MAP2SYMSRC)
-	dmd -of$(MAP2SYM) $(MAP2SYMSRC)
+	dmd -g -of$(MAP2SYM) $(MAP2SYMSRC)
 
 testc.obj: testc.c
 	dmc -c testc.c -g
