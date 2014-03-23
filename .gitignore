@@ -10,3 +10,5 @@
 *.trace
 *.dump
 *.lst
+*.dll
+*.pdf
