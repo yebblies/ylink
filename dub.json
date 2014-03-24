@@ -1,0 +1,65 @@
+{
+    "name": "ylink",
+    "description": "Experimental OMF linker written in D.",
+    "version": "0.1.0",
+
+    "copyright": "Copyright © 2014, Daniel Murphy",
+    "license": "boost",
+    "authors": [
+        "Daniel 'yebblies' Murphy",
+        "see github for more"
+    ],
+
+    "dependencies": {},
+
+    "-ddoxFilterArgs": [ "--unittest-examples" ],
+
+    "targetPath": "bin",
+    "sourcePaths": [ "." ],
+    "importPaths": [ "." ],
+
+    "configurations": [
+        {
+            "name": "ylink",
+            "targetName": "ylink",
+            "sourceFiles": [ "ylink.d" ],
+            "excludedSourceFiles": [ "olink.d", "deblink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
+            "targetType": "executable"
+        },
+        {
+            "name": "olink",
+            "targetName": "olink",
+            "sourceFiles": [ "olink.d" ],
+            "excludedSourceFiles": [ "ylink.d", "deblink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
+            "targetType": "executable"
+        },
+        {
+            "name": "deblink",
+            "targetName": "deblink",
+            "sourceFiles": [ "deblink.d", "psapi.lib" ],
+            "excludedSourceFiles": [ "ylink.d", "olink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
+            "targetType": "executable"
+        },
+        {
+            "name": "debdump",
+            "targetName": "debdump",
+            "sourceFiles": [ "debdump.d" ],
+            "excludedSourceFiles": [ "ylink.d", "olink.d", "deblink.d", "map2sym.d", "pedump.d", "test*" ],
+            "targetType": "executable"
+        },
+        {
+            "name": "map2sym",
+            "targetName": "map2sym",
+            "sourceFiles": [ "map2sym.d" ],
+            "excludedSourceFiles": [ "ylink.d", "olink.d", "deblink.d", "debdump.d", "pedump.d", "test*" ],
+            "targetType": "executable"
+        },
+        {
+            "name": "pedump",
+            "targetName": "pedump",
+            "sourceFiles": [ "pedump.d" ],
+            "excludedSourceFiles": [ "ylink.d", "olink.d", "deblink.d", "debdump.d", "map2sym.d", "test*" ],
+            "targetType": "executable"
+        }
+    ]
+}
