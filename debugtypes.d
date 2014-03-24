@@ -94,7 +94,7 @@ class DebugTypeBasic : DebugType
     {
         return new DebugTypeBasic(bt);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         return this;
     }
@@ -116,7 +116,7 @@ class DebugTypePointer : DebugType
     {
         return new DebugTypePointer(ntype);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         ntype = ntype.resolve(types);
         return this;
@@ -140,7 +140,7 @@ class DebugTypeReference : DebugType
     {
         return new DebugTypeReference(ntype);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         ntype = ntype.resolve(types);
         return this;
@@ -170,7 +170,7 @@ class DebugTypeFunction : DebugType
     {
         return new DebugTypeFunction(rtype, atype, classtype, thistype);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         rtype = rtype.resolve(types);
         assert(atype);
@@ -211,7 +211,7 @@ class DebugTypeArray : DebugType
     {
         return new DebugTypeArray(etype);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         etype = etype.resolve(types);
         return this;
@@ -235,7 +235,7 @@ class DebugTypeDArray : DebugType
     {
         return new DebugTypeDArray(etype);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         etype = etype.resolve(types);
         return this;
@@ -259,7 +259,7 @@ class DebugTypeList : DebugType
     {
         return new DebugTypeList(types);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         foreach(ref t; this.types)
             t = t.resolve(types);
@@ -296,7 +296,7 @@ class DebugTypeUnion : DebugType
     {
         return new DebugTypeUnion(name, fields, size, prop);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         if (fields) fields = fields.resolve(types);
         return this;
@@ -321,7 +321,7 @@ class DebugTypeStruct : DebugType
     {
         return new DebugTypeStruct(name, fields);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         if (fields) fields = fields.resolve(types);
         return this;
@@ -346,7 +346,7 @@ class DebugTypeClass : DebugType
     {
         return new DebugTypeClass(name, fields);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         if (fields) fields = fields.resolve(types);
         return this;
@@ -373,7 +373,7 @@ class DebugTypeField : DebugType
     {
         return new DebugTypeField(type, offset, name);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         type = type.resolve(types);
         return this;
@@ -578,7 +578,7 @@ class DebugTypeNested : DebugType
     {
         assert(0);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         ctype = ctype.resolve(types);
         return this;
@@ -608,7 +608,7 @@ class DebugTypeBitfield : DebugType
     {
         assert(0);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         ftype = ftype.resolve(types);
         return this;
@@ -636,7 +636,7 @@ class DebugTypeError : DebugType
     {
         assert(0);
     }
-    DebugType resolve(DebugType[] types)
+    override DebugType resolve(DebugType[] types)
     {
         return this;
     }
