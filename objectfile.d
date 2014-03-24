@@ -3,6 +3,7 @@ import datafile;
 import modules;
 import omflibraryfile;
 import omfobjectfile;
+import coffobjectfile;
 import sectiontable;
 import symboltable;
 import workqueue;
@@ -23,6 +24,8 @@ abstract class ObjectFile : Module
             return new OmfObjectFile(f);
         case 0xF0:
             return new OmfLibraryFile(f);
+        case 0x4C:
+            return new CoffObjectFile(f);
         default:
             return null;
         }

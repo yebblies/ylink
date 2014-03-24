@@ -11,6 +11,10 @@ class Paths
 
     void add(string path)
     {
+        if (path.length >= 2 &&
+            path[0] == '"' &&
+            path[$-1] == '"')
+            path = path[1..$-1];
         paths ~= path;
     }
     void addLINK()

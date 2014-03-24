@@ -122,23 +122,23 @@ struct DataDirectories
     IMAGE_DATA_DIRECTORY Reserved;
 }
 
-immutable char[8][] SectionNames =
+immutable ubyte[8][] SectionNames =
 [
-    ".idata\0\0",
-    ".edata\0\0",
-    ".text\0\0\0",
-    ".tls\0\0\0\0",
-    ".data\0\0\0",
-    ".rdata\0\0",
-    ".bss\0\0\0\0",
-    ".reloc\0\0",
-    ".debug\0\0",
+    cast(ubyte[8])".idata\0\0",
+    cast(ubyte[8])".edata\0\0",
+    cast(ubyte[8])".text\0\0\0",
+    cast(ubyte[8])".tls\0\0\0\0",
+    cast(ubyte[8])".data\0\0\0",
+    cast(ubyte[8])".rdata\0\0",
+    cast(ubyte[8])".bss\0\0\0\0",
+    cast(ubyte[8])".reloc\0\0",
+    cast(ubyte[8])".debug\0\0",
 ];
 
 struct SectionHeader
 {
 align(1):
-    char[8] Name;
+    ubyte[8] Name;
     uint VirtualSize;
     uint VirtualAddress;
     uint SizeOfRawData;
@@ -248,4 +248,55 @@ align(1):
     uint ForwarderChain;
     uint Name;
     uint ImportAddressTable;
+}
+
+align(1)
+struct StandardSymbolRecord
+{
+align(1):
+    ubyte[8] Name;
+    uint Value;
+    short SectionNumber;
+    ushort Type;
+    ubyte StorageClass;
+    ubyte NumberOfAuxSymbols;
+}
+static assert(StandardSymbolRecord.sizeof == 18);
+
+enum : short
+{
+    IMAGE_SYM_UNDEFINED = 0,
+    IMAGE_SYM_ABSOLUTE = -1,
+    IMAGE_SYM_DEBUG = -2,
+}
+
+enum : ubyte
+{
+    IMAGE_SYM_CLASS_END_OF_FUNCTION = 0xFF,
+    IMAGE_SYM_CLASS_NULL = 0,
+    IMAGE_SYM_CLASS_AUTOMATIC = 1,
+    IMAGE_SYM_CLASS_EXTERNAL = 2,
+    IMAGE_SYM_CLASS_STATIC = 3,
+    IMAGE_SYM_CLASS_REGISTER = 4,
+    IMAGE_SYM_CLASS_EXTERNAL_DEF = 5,
+    IMAGE_SYM_CLASS_LABEL = 6,
+    IMAGE_SYM_CLASS_UNDEFINED_LABEL = 7,
+    IMAGE_SYM_CLASS_MEMBER_OF_STRUCT = 8,
+    IMAGE_SYM_CLASS_ARGUMENT = 9,
+    IMAGE_SYM_CLASS_STRUCT_TAG = 10,
+    IMAGE_SYM_CLASS_MEMBER_OF_UNION = 11,
+    IMAGE_SYM_CLASS_UNION_TAG = 12,
+    IMAGE_SYM_CLASS_TYPE_DEFINITION = 13,
+    IMAGE_SYM_CLASS_UNDEFINED_STATIC = 14,
+    IMAGE_SYM_CLASS_ENUM_TAG = 15,
+    IMAGE_SYM_CLASS_MEMBER_OF_ENUM = 16,
+    IMAGE_SYM_CLASS_REGISTER_PARAM = 17,
+    IMAGE_SYM_CLASS_BIT_FIELD = 18,
+    IMAGE_SYM_CLASS_BLOCK = 100,
+    IMAGE_SYM_CLASS_FUNCTION = 101,
+    IMAGE_SYM_CLASS_END_OF_STRUCT = 102,
+    IMAGE_SYM_CLASS_FILE = 103,
+    IMAGE_SYM_CLASS_SECTION = 104,
+    IMAGE_SYM_CLASS_WEAK_EXTERNAL = 105,
+    IMAGE_SYM_CLASS_CLR_TOKEN = 107,
 }

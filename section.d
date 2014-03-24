@@ -19,6 +19,7 @@ enum SectionClass
     // generated
     IData,
     EData,
+    Directive,
 }
 
 enum SectionAlign
