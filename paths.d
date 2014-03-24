@@ -15,7 +15,7 @@ class Paths
     }
     void addLINK()
     {
-        foreach(p; environment["LINK"].split(";"))
+        foreach(p; environment.get("LINK").split(";"))
             if (p)
                 add(p);
     }
