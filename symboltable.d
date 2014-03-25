@@ -48,15 +48,17 @@ final class SymbolTable
     {
         if (auto p = sym.name in symbols)
         {
-            if (cast(ExternSymbol)sym)
+            if (auto es = cast(ExternSymbol)sym)
             {
                 // Redefining an extern symbol is a no-op
                 p.refCount++;
+                es.sym = *p;
             }
-            else if (cast(ExternSymbol)*p)
+            else if (auto es = cast(ExternSymbol)*p)
             {
                 sym.refCount += p.refCount;
-                removeUndefined(*p);
+                removeUndefined(es);
+                es.sym = sym;
                 *p = sym;
             }
             else if (cast(ImportThunkSymbol)*p && cast(ImportThunkSymbol)sym)

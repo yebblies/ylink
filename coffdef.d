@@ -189,13 +189,15 @@ enum : uint
     IMAGE_SCN_MEM_WRITE = 0x80000000,
 }
 
+align(1)
 struct CoffRelocation
 {
 align(1):
     uint VirtualAddress;
-    uint SymbolTableAddress;
+    uint SymbolTableIndex;
     ushort Type;
 }
+static assert(CoffRelocation.sizeof == 10);
 
 enum : ushort
 {

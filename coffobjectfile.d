@@ -25,6 +25,9 @@ private:
     DataFile f;
     SymbolTable symtab;
     Section[] sections;
+    SectionHeader[] sectionheaders;
+    immutable(ubyte)[][] sectionnames;
+    Symbol[] symbols;
     bool[] iscomdat;
 
 public:
@@ -117,9 +120,10 @@ public:
             return f.readZString();
         }
 
-        foreach(i; 0..ch.NumberOfSections)
+        sectionheaders = cast(SectionHeader[])f.readBytes(SectionHeader.sizeof * ch.NumberOfSections);
+
+        foreach(sh; sectionheaders)
         {
-            auto sh = f.read!SectionHeader();
             immutable(ubyte)[] name;
             if (sh.Name[0] == '/')
             {
@@ -130,11 +134,14 @@ public:
             {
                 name = sh.Name[].idup.trim;
             }
+            sectionnames ~= name;
 
             // writefln("%s: 0x%08X", cast(string)sh.Name, sh.Characteristics);
             auto secclass = getSectionClass(sh);
             auto secalign = getSectionAlign(sh);
-            auto length = sh.VirtualSize;
+            assert(sh.VirtualSize == 0);
+            assert(sh.VirtualAddress == 0);
+            auto length = sh.SizeOfRawData;
             auto sec = new Section(name, secclass, secalign, length);
             sections ~= sec;
             sectab.add(sec);
@@ -178,6 +185,7 @@ public:
             }
         }
 
+        symbols.length = ch.NumberOfSymbols;
         foreach(ref i; 0..ch.NumberOfSymbols)
         {
             f.seek(ch.PointerToSymbolTable + StandardSymbolRecord.sizeof * i);
@@ -203,18 +211,17 @@ public:
                 {
                     if (sym.Value == 0)
                     {
-                        symtab.add(new ExternSymbol(name));
+                        symbols[i] = symtab.add(new ExternSymbol(name));
                     }
                     else
                     {
-                        symtab.add(new ComdefSymbol(name,  sym.Value));
+                        symbols[i] = symtab.add(new ComdefSymbol(name,  sym.Value));
                     }
                 }
                 else if (sym.SectionNumber == IMAGE_SYM_ABSOLUTE)
                 {
                     assert(sym.Type == 0);
-                    assert(sym.NumberOfAuxSymbols == 0);
-                    symtab.add(new AbsoluteSymbol(name, sym.Value));
+                    symbols[i] = symtab.add(new AbsoluteSymbol(name, sym.Value));
                     continue;
                 }
                 else
@@ -223,59 +230,142 @@ public:
                     if (iscomdat[sym.SectionNumber-1])
                     {
                         // writeln("Comdat symbol ", cast(string)name);
-                        symtab.add(new ComdatSymbol(sec, name, sym.Value, Comdat.Any, false));
+                        symbols[i] = symtab.add(new ComdatSymbol(sec, name, sym.Value, Comdat.Any, false));
                     }
                     else
                     {
                         // writeln("Public symbol ", cast(string)name);
-                        symtab.add(new PublicSymbol(sec, name, sym.Value));
+                        symbols[i] = symtab.add(new PublicSymbol(sec, name, sym.Value));
                     }
                 }
                 break;
             case IMAGE_SYM_CLASS_STATIC:
-                if (sym.Value == 0)
+                if (sym.SectionNumber == IMAGE_SYM_ABSOLUTE)
                 {
-                    // section symbol
-                    // do nothing
-                    //assert(0, cast(string)name);
-                    i += sym.NumberOfAuxSymbols;
+                    // absolute symbol
+                    assert(sym.Type == 0);
+                    assert(sym.NumberOfAuxSymbols == 0);
+                    auto s = new AbsoluteSymbol(name, sym.Value);
+                    s.isLocal = true;
+                    symbols[i] = symtab.add(s);
                     continue;
                 }
                 else
                 {
-                    if (sym.SectionNumber == IMAGE_SYM_ABSOLUTE)
+                    if (sym.Value == 0)
                     {
-                        // absolute symbol
-                        assert(sym.Type == 0);
-                        assert(sym.NumberOfAuxSymbols == 0);
-                        auto s = new AbsoluteSymbol(name, sym.Value);
-                        s.isLocal = true;
-                        symtab.add(s);
-                        continue;
+                        auto ss = symtab.searchName(name);
+                        if (ss)
+                        {
+                            symbols[i] = ss;
+                            break;
+                        }
                     }
-                    else
-                    {
-                        // writeln("Static symbol ", cast(string)name);
-                        auto sec = sections[sym.SectionNumber-1];
-                        auto s = new PublicSymbol(sec, name, sym.Value);
-                        s.isLocal = true;
-                        symtab.add(s);
-                    }
+                    // writeln("Static symbol ", cast(string)name);
+                    auto sec = sections[sym.SectionNumber-1];
+                    auto s = new PublicSymbol(sec, name, sym.Value);
+                    s.isLocal = true;
+                    symbols[i] = symtab.add(s);
                 }
                 break;
             case IMAGE_SYM_CLASS_LABEL:
+                auto sec = sections[sym.SectionNumber-1];
+                auto s = new AbsoluteSymbol(cast(immutable(ubyte)[])to!string(cast(void*)sec) ~ '$' ~ name, 0);
+                symbols[i] = symtab.add(s);
                 continue;
             default:
                 assert(0, to!string(sym.StorageClass));
             }
-            enforce(sym.NumberOfAuxSymbols == 0, cast(string)name);
+            i += sym.NumberOfAuxSymbols;
         }
         symtab.checkUnresolved();
         symtab.merge();
     }
     override void loadData(uint tlsBase)
     {
-        assert(0);
+        f.seek(0);
+
+        auto ch = f.read!CoffHeader();
+
+        if (ch.Machine == IMAGE_FILE_MACHINE_UNKNOWN &&
+            ch.NumberOfSections == ushort.max)
+        {
+            // Import object
+            return;
+        }
+
+        enforce(ch.Machine == IMAGE_FILE_MACHINE_I386);
+        enforce(ch.SizeOfOptionalHeader == 0);
+        enforce(ch.Characteristics == 0);
+
+        auto stringtab = ch.PointerToSymbolTable + StandardSymbolRecord.sizeof * ch.NumberOfSymbols;
+
+        foreach(i, sh; sectionheaders)
+        {
+            auto name = sectionnames[i];
+            auto sec = sections[i];
+
+writeln(cast(string)this.name, " ", cast(string)name);
+            if (sh.SizeOfRawData && sec.data.length)
+            {
+                if (sec.data.length != sh.SizeOfRawData)
+                {
+                    writeln("comdat length mismatch");
+                    continue;
+                }
+                f.seek(sh.PointerToRawData);
+                auto data = f.readBytes(sh.SizeOfRawData);
+                sec.data[] = data[];
+
+                f.seek(sh.PointerToRelocations);
+                foreach(j; 0..sh.NumberOfRelocations)
+                {
+                    auto r = f.read!CoffRelocation();
+                    auto sym = symbols[r.SymbolTableIndex];
+                    assert(sym);
+                    sym = sym.resolve();
+                    assert(!cast(ExternSymbol)sym);
+                    writeln(sym);
+
+                    assert(ch.Machine == IMAGE_FILE_MACHINE_I386);
+                    switch(r.Type)
+                    {
+                    case IMAGE_REL_I386_DIR32:
+                        auto targetAddress = sym.getAddress();
+                        auto baseAddress = 0;
+                        auto offset = r.VirtualAddress;
+                        (cast(uint[])sec.data[offset..offset+4])[0] += targetAddress - baseAddress;
+                        break;
+                    case IMAGE_REL_I386_DIR32NB:
+                        auto targetAddress = sym.getAddress();
+                        auto baseAddress = sec.base + r.VirtualAddress;
+                        auto offset = r.VirtualAddress;
+                        (cast(uint[])sec.data[offset..offset+4])[0] += targetAddress - baseAddress;
+                        break;
+                    case IMAGE_REL_I386_SECTION:
+                        auto targetAddress = sec.container.base;
+                        auto baseAddress = 0;
+                        auto offset = r.VirtualAddress;
+                        (cast(uint[])sec.data[offset..offset+4])[0] += targetAddress - baseAddress;
+                        break;
+                    case IMAGE_REL_I386_SECREL:
+                        auto targetAddress = sym.getAddress();
+                        auto baseAddress = sec.container.base;
+                        auto offset = r.VirtualAddress;
+                        (cast(uint[])sec.data[offset..offset+4])[0] += targetAddress - baseAddress;
+                        break;
+                    case IMAGE_REL_I386_REL32:
+                        auto targetAddress = sym.getAddress();
+                        auto baseAddress = sec.base + r.VirtualAddress;
+                        auto offset = r.VirtualAddress;
+                        (cast(uint[])sec.data[offset..offset+4])[0] += targetAddress - baseAddress;
+                        break;
+                    default:
+                        assert(0, "Unhandled relocation: 0x" ~ r.Type.to!string(16));
+                    }
+                }
+            }
+        }
     }
 private:
     SectionClass getSectionClass(in ref SectionHeader sh)

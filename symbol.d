@@ -27,6 +27,10 @@ abstract class Symbol
     abstract void dump();
     abstract uint getAddress();
     abstract uint getSegment();
+    Symbol resolve()
+    {
+        return this;
+    }
 }
 
 final class PublicSymbol : Symbol
@@ -79,6 +83,7 @@ final class AbsoluteSymbol : Symbol
 
 final class ExternSymbol : Symbol
 {
+    Symbol sym;
     this(immutable(ubyte)[] name)
     {
         super(name, 1);
@@ -94,6 +99,10 @@ final class ExternSymbol : Symbol
     override uint getSegment()
     {
         assert(0);
+    }
+    override Symbol resolve()
+    {
+        return sym.resolve();
     }
 }
 
