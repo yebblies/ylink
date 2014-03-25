@@ -81,7 +81,7 @@ void main(string[] args)
 
     auto sectab = new SectionTable();
     auto symtab = new SymbolTable(null);
-    symtab.entryPoint = cast(immutable(ubyte)[])"mainCRTStartup";
+    symtab.setEntry(cast(immutable(ubyte)[])"_mainCRTStartup");
     auto objects = loadObjects(objFilenames, paths, symtab, sectab);
     finalizeLoad(symtab, sectab);
     auto segments = generateSegments(objects, symtab, sectab);

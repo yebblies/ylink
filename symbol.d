@@ -179,8 +179,7 @@ final class ImportThunkSymbol : Symbol
     }
     override void dump()
     {
-        assert(0);
-        // writeln("ImportThunk: ", cleanString(name), " = ", cast(string)modname, ":", expName.length ? cast(string)expName : to!string(expOrd), " (", refCount, ")");
+        writeln("ImportThunk: ", cleanString(name), " = ", cast(string)imp.modname, ":", imp.expName.length ? cast(string)imp.expName : to!string(imp.expOrd), " (", refCount, ")");
     }
     override uint getAddress()
     {
@@ -206,8 +205,7 @@ final class ImportAddressSymbol : Symbol
     }
     override void dump()
     {
-        assert(0);
-        // writeln("ImportAddress: ", cleanString(name), " = ", cast(string)modname, ":", expName.length ? cast(string)expName : to!string(expOrd), " (", refCount, ")");
+        writeln("ImportAddress: ", cleanString(name), " = ", cast(string)imp.modname, ":", imp.expName.length ? cast(string)imp.expName : to!string(imp.expOrd), " (", refCount, ")");
     }
     override uint getAddress()
     {

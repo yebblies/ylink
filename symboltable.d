@@ -41,6 +41,7 @@ final class SymbolTable
         {
             enforce(!entryPoint.length, "Multiple entry points defined");
             entryPoint = name;
+            add(new ExternSymbol(name));
         }
     }
     Symbol add(Symbol sym)
@@ -182,7 +183,14 @@ final class SymbolTable
             }
         }
         enforce(undefcount == 0, "Error: " ~ to!string(undefcount) ~ " unresolved symbols found");
-        enforce(parent || entryPoint.length, "Error: No entry point defined");
+        if (!parent)
+        {
+            enforce(entryPoint.length, "Error: No entry point defined");
+            if (!searchName(entryPoint))
+            {
+                enforce(false, "Entry point '" ~ cast(string)entryPoint ~ "' not defined");
+            }
+        }
     }
     void defineImports(SectionTable sectab)
     {
