@@ -8,15 +8,11 @@ import std.stdio;
 import std.string;
 
 import linker;
-import objectfile;
-import omfobjectfile;
 import paths;
+import driver;
 import pe;
-import relocation;
 import sectiontable;
-import segment;
 import symboltable;
-import workqueue;
 
 void main(string[] args)
 {
@@ -132,33 +128,12 @@ void main(string[] args)
     foreach(f; files[5])
         resFilenames ~= f.defaultExtension("res");
 
-    auto queue = new WorkQueue!string();
-    foreach(filename; objFilenames)
-        queue.append(filename);
-
     auto sectab = new SectionTable();
     auto symtab = new SymbolTable(null);
-    auto objects = new WorkQueue!ObjectFile();
-    while (!queue.empty())
-    {
-        auto filename = queue.pop();
-        if (!paths.search(filename))
-            writeln("Warning - File not found: " ~ filename);
-        else
-        {
-            auto object = ObjectFile.detectFormat(filename);
-            enforce(object, "Unknown object file format: " ~ filename);
-            object.loadSymbols(symtab, sectab, queue, objects);
-        }
-    }
-    symtab.defineImports(sectab);
-    symtab.allocateComdef(sectab);
-    symtab.defineSpecial(sectab, imageBase);
-    if (!symtab.entryPoint.length)
-        symtab.entryPoint = cast(immutable(ubyte)[])"mainCRTStartup";
-    symtab.checkUnresolved();
-    auto segments = sectab.allocateSegments(imageBase, segAlign, fileAlign);
-    symtab.buildImports(segments[SegmentType.Import].data, imageBase);
+    auto objects = loadObjects(objFilenames, paths, symtab, sectab);
+    finalizeLoad(symtab, sectab);
+    auto segments = generateSegments(objects, symtab, sectab);
+
     if (dump)
     {
         sectab.dump();
@@ -166,11 +141,7 @@ void main(string[] args)
         foreach(seg; segments)
             seg.dump();
     }
-    while (!objects.empty())
-    {
-        auto object = objects.pop();
-        object.loadData((SegmentType.TLS in segments) ? segments[SegmentType.TLS].base : -1);
-    }
+
     buildPE(outFilename, segments, symtab);
     if (map)
         symtab.makeMap(mapFilename);

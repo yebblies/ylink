@@ -14,6 +14,7 @@ import sectiontable;
 import segment;
 import symboltable;
 import workqueue;
+import driver;
 
 void main(string[] args)
 {
@@ -51,34 +52,19 @@ void main(string[] args)
                     outputfile = args[i].setExtension("exe");
                 goto case;
             case ".lib":
-                objectFilenames ~= args[i];
+                objectFilenames ~= args[i].defaultExtension("obj");
                 break;
             }
             break;
         }
     }
 
-    auto queue = new WorkQueue!string();
-    foreach(filename; objectFilenames)
-        queue.append(defaultExtension(filename, "obj"));
-
     auto sectab = new SectionTable();
     auto symtab = new SymbolTable(null);
-    auto objects = new WorkQueue!ObjectFile();
-    while (!queue.empty())
-    {
-        auto filename = queue.pop();
-        enforce(paths.search(filename), "File not found: " ~ filename);
-        auto object = ObjectFile.detectFormat(filename);
-        enforce(object, "Unknown object file format: " ~ filename);
-        object.loadSymbols(symtab, sectab, queue, objects);
-    }
-    symtab.defineImports(sectab);
-    symtab.allocateComdef(sectab);
-    symtab.defineSpecial(sectab);
-    symtab.checkUnresolved();
-    auto segments = sectab.allocateSegments(imageBase, segAlign, fileAlign);
-    symtab.buildImports(segments[SegmentType.Import].data, imageBase);
+    auto objects = loadObjects(objectFilenames, paths, symtab, sectab);
+    finalizeLoad(symtab, sectab);
+    auto segments = generateSegments(objects, symtab, sectab);
+
     if (dump)
     {
         sectab.dump();
@@ -86,13 +72,8 @@ void main(string[] args)
         foreach(seg; segments)
             seg.dump();
     }
-    while (!objects.empty())
-    {
-        auto object = objects.pop();
-        object.loadData((SegmentType.TLS in segments) ? segments[SegmentType.TLS].base : -1);
-    }
+
     buildPE(outputfile, segments, symtab);
-    writeln("Success!");
     if (map)
         symtab.makeMap(outputfile.setExtension("map"));
 }

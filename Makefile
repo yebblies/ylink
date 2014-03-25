@@ -1,5 +1,5 @@
 
-LINKSRC=coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d coffobjectfile.d cofflibraryfile.d
+LINKSRC=coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d coffobjectfile.d cofflibraryfile.d driver.d
 
 YLINK=ylink.exe
 YLINKSRC=ylink.d $(LINKSRC)
@@ -64,11 +64,17 @@ teste.exe teste.map: $(TESTOBJ) $(OLINK)
 	$(OLINK) /MAP $(TESTOBJ),teste.exe/CO/NOI
 #	$(YLINK) $(TESTOBJ) -o teste.exe -m
 
+testf.exe testf.map: $(TESTOBJ) $(YLINK)
+	$(YLINK) $(TESTOBJ) -o testf.exe -m
+
 testd.sym: testd.map $(MAP2SYM)
 	$(MAP2SYM) testd.map testd.sym
 
 teste.sym: teste.map
 	copy teste.map teste.sym
+
+testf.sym: testf.map
+	copy testf.map testf.sym
 
 testd.trace: $(DEBLINK) testd.exe
 	$(DEBLINK) testd.exe -of testd.trace
@@ -76,13 +82,19 @@ testd.trace: $(DEBLINK) testd.exe
 teste.trace: $(DEBLINK) teste.exe
 	$(DEBLINK) teste.exe -of teste.trace
 
+testf.trace: $(DEBLINK) testf.exe
+	$(DEBLINK) testf.exe -of testf.trace
+
 testd.log: $(DEBDUMP) testd.trace testd.sym
 	debdump testd.trace testd.sym testd.log
 
 teste.log: $(DEBDUMP) teste.trace teste.sym
 	debdump teste.trace teste.sym teste.log
 
-test: testd.log teste.log
+testf.log: $(DEBDUMP) testf.trace testf.sym
+	debdump testf.trace testf.sym testf.log
+
+test: testd.log teste.log testf.log
 
 $(PEDUMP): $(PEDUMPSRC)
 	dmd -of$(PEDUMP) $(PEDUMPSRC) -debug=LOADPE
