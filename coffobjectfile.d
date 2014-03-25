@@ -4,6 +4,7 @@ import std.exception;
 import std.conv;
 import std.path;
 import std.stdio;
+import std.string;
 
 import datafile;
 import modules;
@@ -136,6 +137,7 @@ public:
             auto length = sh.VirtualSize;
             auto sec = new Section(name, secclass, secalign, length);
             sections ~= sec;
+            sectab.add(sec);
             iscomdat ~= (sh.Characteristics & IMAGE_SCN_LNK_COMDAT) != 0;
 
             if (secclass == SectionClass.Directive)
@@ -150,40 +152,23 @@ public:
                 auto s = cast(string)data;
                 while (s.length)
                 {
-                    while(s.length && s[0] == ' ')
-                        s = s[1..$];
-                    if (!s.length)
-                        break;
-                    assert(s[0] == '/');
-                    size_t j = 1;
-                    while (s.length && s[j] != ':')
-                        j++;
-                    auto arg = s[0..j];
-                    size_t k = j+1;
-                    if (s[k] == '"')
+                    string arg;
+                    string val;
+                    if (!parseMSLinkerSwitch(s, arg, val))
                     {
-                        k++;
-                        while (s[k] != '"')
-                            k++;
+                        enforce(!s.length || s[0] == '/', "Invalid directives segment: " ~ cast(string)data);
+                        break;
                     }
-                    while (s[k] != ' ')
-                        k++;
-                    auto val = s[j+1..k];
-                    if (val[0] == '"')
-                        val = val[1..$-1];
-                    s = s[k+1..$];
 
                     switch(arg)
                     {
                     case "/DEFAULTLIB":
-                    case "/defaultlib":
                         queue.append(defaultExtension(val, "lib"));
                         break;
                     case "/MERGE":
-                    case "/merge":
                         writeln("Warning: /MERGE ignored");
                         break;
-                    case "/disallowlib":
+                    case "/DISALLOWLIB":
                         writeln("Warning: /DISALLOWLIB ignored");
                         break;
                     default:
@@ -362,4 +347,60 @@ inout(ubyte)[] trim(inout(ubyte)[] s)
     while(s.length && s[$-1] == 0)
         s = s[0..$-1];
     return s;
+}
+
+bool parseMSLinkerSwitch(ref string s, out string arg, out string val, bool untilend = false)
+{
+    arg = null;
+    val = null;
+    while(s.length && s[0] == ' ')
+        s = s[1..$];
+
+    if (!s.length)
+        return false;
+
+    if (s[0] != '/')
+        return false;
+
+    size_t i = 1;
+    while (s.length && s[i] != ':' && s[i] != ' ' && s[i] != '/')
+        i++;
+    arg = s[0..i].toUpper;
+
+    s = s[i..$];
+    if (!s.length || s[0] != ':')
+        return true;
+
+    s = s[1..$];
+    i = 0;
+    if (s[i] == '"')
+    {
+        i++;
+        while (s.length && s[i] != '"')
+            i++;
+        if (s[i] != '"')
+            return false;
+        i++;
+    }
+    else if (untilend)
+    {
+        val = s[0..$];
+        s = null;
+        return true;
+    }
+    else
+    {
+        while (i < s.length && s[i] != ' ' && s[i] != '/')
+            i++;
+    }
+    val = s[0..i];
+    if (val[0] == '"')
+    {
+        val = val[1..$-1];
+        i++;
+    }
+    s = s[i..$];
+    while(s.length && s[0] == ' ')
+        s = s[1..$];
+    return true;
 }

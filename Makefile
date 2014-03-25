@@ -7,6 +7,9 @@ YLINKSRC=ylink.d $(LINKSRC)
 OLINK=olink.exe
 OLINKSRC=olink.d $(LINKSRC)
 
+MLINK=mlink.exe
+MLINKSRC=mlink.d $(LINKSRC)
+
 DEBLINK=deblink.exe
 DEBLINKSRC=deblink.d windebug.d
 
@@ -41,6 +44,9 @@ $(YLINK): $(YLINKSRC)
 $(OLINK): $(OLINKSRC)
 	dmd -g -of$(OLINK) $(OLINKSRC) $(DEBUGFLAGS)
 
+$(MLINK): $(MLINKSRC)
+	dmd -g -of$(MLINK) $(MLINKSRC) $(DEBUGFLAGS)
+
 $(DEBLINK): $(DEBLINKSRC)
 	dmd -g -of$(DEBLINK) $(DEBLINKSRC) psapi.lib
 
@@ -62,7 +68,6 @@ testd.exe testd.map: $(TESTOBJ)
 teste.exe teste.map: $(TESTOBJ) $(OLINK)
 	set LINK=C:\D\dmd2\windows\lib
 	$(OLINK) /MAP $(TESTOBJ),teste.exe/CO/NOI
-#	$(YLINK) $(TESTOBJ) -o teste.exe -m
 
 testf.exe testf.map: $(TESTOBJ) $(YLINK)
 	$(YLINK) $(TESTOBJ) -o testf.exe -m
@@ -113,9 +118,8 @@ $(COFFOBJ) : testhello.c
 testcl.exe: $(COFFOBJ)
 	$(VC_LINK) /MAP:testcl.map /OUT:testcl.exe $(COFFOBJ) /LIBPATH:$(VC_LIB) /LIBPATH:$(SDK_LIB)
 
-testyl.exe testyl.map: $(COFFOBJ) $(OLINK)
-	set LINK=$(VC_LIB);$(SDK_LIB)
-	$(OLINK) /MAP $(COFFOBJ),testy1.exe/NOI
+testyl.exe testyl.map: $(COFFOBJ) $(MLINK)
+	$(MLINK) /MAP:testyl.map /OUT:testyl.exe $(COFFOBJ) /LIBPATH:$(VC_LIB) /LIBPATH:$(SDK_LIB)
 
 clean:
 	-del *.exe
