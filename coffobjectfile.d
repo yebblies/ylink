@@ -305,12 +305,12 @@ public:
             auto name = sectionnames[i];
             auto sec = sections[i];
 
-writeln(cast(string)this.name, " ", cast(string)name);
+            //writeln(cast(string)this.name, " ", cast(string)name);
             if (sh.SizeOfRawData && sec.data.length)
             {
                 if (sec.data.length != sh.SizeOfRawData)
                 {
-                    writeln("comdat length mismatch");
+                    writeln("Warning: comdat length mismatch");
                     continue;
                 }
                 f.seek(sh.PointerToRawData);
@@ -325,7 +325,7 @@ writeln(cast(string)this.name, " ", cast(string)name);
                     assert(sym);
                     sym = sym.resolve();
                     assert(!cast(ExternSymbol)sym);
-                    writeln(sym);
+                    //writeln(sym);
 
                     assert(ch.Machine == IMAGE_FILE_MACHINE_I386);
                     switch(r.Type)

@@ -81,6 +81,12 @@ teste.sym: teste.map
 testf.sym: testf.map
 	copy testf.map testf.sym
 
+testcl.sym: testcl.map $(MAP2SYM)
+	$(MAP2SYM) -ms testcl.map testcl.sym
+
+testyl.sym: testyl.map
+	copy testyl.map testyl.sym
+
 testd.trace: $(DEBLINK) testd.exe
 	$(DEBLINK) testd.exe -of testd.trace
 
@@ -90,6 +96,12 @@ teste.trace: $(DEBLINK) teste.exe
 testf.trace: $(DEBLINK) testf.exe
 	$(DEBLINK) testf.exe -of testf.trace
 
+testcl.trace: $(DEBLINK) testcl.exe
+	$(DEBLINK) testcl.exe -of testcl.trace
+
+testyl.trace: $(DEBLINK) testyl.exe
+	$(DEBLINK) testyl.exe -of testyl.trace
+
 testd.log: $(DEBDUMP) testd.trace testd.sym
 	debdump testd.trace testd.sym testd.log
 
@@ -98,6 +110,12 @@ teste.log: $(DEBDUMP) teste.trace teste.sym
 
 testf.log: $(DEBDUMP) testf.trace testf.sym
 	debdump testf.trace testf.sym testf.log
+
+testcl.log: $(DEBDUMP) testcl.trace testcl.sym
+	debdump testcl.trace testcl.sym testcl.log
+
+testyl.log: $(DEBDUMP) testyl.trace testyl.sym
+	debdump testyl.trace testyl.sym testyl.log
 
 test: testd.log teste.log testf.log
 
@@ -116,10 +134,12 @@ $(COFFOBJ) : testhello.c
 	$(CL) /c testhello.c /Fo$(COFFOBJ) -I$(CL_INCLUDE)
 
 testcl.exe: $(COFFOBJ)
-	$(VC_LINK) /MAP:testcl.map /OUT:testcl.exe $(COFFOBJ) /LIBPATH:$(VC_LIB) /LIBPATH:$(SDK_LIB)
+	$(VC_LINK) /MAP:testcl.map /OUT:testcl.exe $(COFFOBJ) /LIBPATH:$(VC_LIB) /LIBPATH:$(SDK_LIB) /FIXED
 
 testyl.exe testyl.map: $(COFFOBJ) $(MLINK)
 	$(MLINK) /MAP:testyl.map /OUT:testyl.exe $(COFFOBJ) /LIBPATH:$(VC_LIB) /LIBPATH:$(SDK_LIB)
+
+mscoff: testcl.log testyl.log
 
 clean:
 	-del *.exe
