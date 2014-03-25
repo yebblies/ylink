@@ -150,23 +150,64 @@ final class ComdefSymbol : Symbol
     }
 }
 
-final class ImportSymbol : Symbol
+final class Import
 {
     immutable(ubyte)[] modname;
     ushort expOrd;
     immutable(ubyte)[] expName;
-    Section sec;
-    uint offset;
-    this(immutable(ubyte)[] modname, ushort expOrd, immutable(ubyte)[] intName, immutable(ubyte)[] expName)
+
+    ImportThunkSymbol thunk;
+    ImportAddressSymbol address;
+
+    this(immutable(ubyte)[] modname, ushort expOrd, immutable(ubyte)[] expName)
     {
-        super(intName, 0);
         this.modname = modname;
         this.expOrd = expOrd;
         this.expName = expName;
     }
+}
+
+final class ImportThunkSymbol : Symbol
+{
+    Import imp;
+    Section sec;
+    uint offset;
+    this(immutable(ubyte)[] name, Import imp)
+    {
+        super(name, 0);
+        this.imp = imp;
+    }
     override void dump()
     {
-        writeln("Import: ", cleanString(name), " = ", cast(string)modname, ":", expName.length ? cast(string)expName : to!string(expOrd), " (", refCount, ")");
+        assert(0);
+        // writeln("ImportThunk: ", cleanString(name), " = ", cast(string)modname, ":", expName.length ? cast(string)expName : to!string(expOrd), " (", refCount, ")");
+    }
+    override uint getAddress()
+    {
+        assert(sec);
+        return sec.base + offset;
+    }
+    override uint getSegment()
+    {
+        assert(sec);
+        return sec.container.seg.segid;
+    }
+}
+
+final class ImportAddressSymbol : Symbol
+{
+    Import imp;
+    Section sec;
+    uint offset;
+    this(immutable(ubyte)[] name, Import imp)
+    {
+        super(name, 0);
+        this.imp = imp;
+    }
+    override void dump()
+    {
+        assert(0);
+        // writeln("ImportAddress: ", cleanString(name), " = ", cast(string)modname, ":", expName.length ? cast(string)expName : to!string(expOrd), " (", refCount, ")");
     }
     override uint getAddress()
     {

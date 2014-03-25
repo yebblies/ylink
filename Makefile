@@ -1,5 +1,5 @@
 
-LINKSRC=coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d coffobjectfile.d
+LINKSRC=coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d coffobjectfile.d cofflibraryfile.d
 
 YLINK=ylink.exe
 YLINKSRC=ylink.d $(LINKSRC)
@@ -99,7 +99,7 @@ $(COFFOBJ) : testhello.c
 	$(CL) /c testhello.c /Fo$(COFFOBJ) -I$(CL_INCLUDE)
 
 testcl.exe: $(COFFOBJ)
-	$(VC_LINK) /OUT:testcl.exe $(COFFOBJ) /LIBPATH:$(VC_LIB) /LIBPATH:$(SDK_LIB)
+	$(VC_LINK) /MAP:testcl.map /OUT:testcl.exe $(COFFOBJ) /LIBPATH:$(VC_LIB) /LIBPATH:$(SDK_LIB)
 
 testyl.exe testyl.map: $(COFFOBJ) $(OLINK)
 	set LINK=$(VC_LIB);$(SDK_LIB)

@@ -24,6 +24,7 @@ private:
     DataFile f;
     SymbolTable symtab;
     Section[] sections;
+    bool[] iscomdat;
 
 public:
     this(DataFile f)
@@ -44,33 +45,98 @@ public:
         f.seek(0);
 
         auto ch = f.read!CoffHeader();
+
+        if (ch.Machine == IMAGE_FILE_MACHINE_UNKNOWN &&
+            ch.NumberOfSections == ushort.max)
+        {
+            // Import object
+            f.seek(f.tell() - CoffHeader.sizeof);
+            auto ih = f.read!CoffImportHeader();
+
+            enforce(ih.Version == 0);
+            enforce(ih.Machine == IMAGE_FILE_MACHINE_I386);
+            enforce((ih.Type & 0b11) == IMPORT_CODE);
+
+            auto name = f.readZString();
+            auto modname = f.readZString();
+
+            auto expname = name;
+            switch ((ih.Type & 0b11100) >> 2)
+            {
+            case IMPORT_NAME:
+                assert(0);
+            case IMPORT_NAME_NOPREFIX:
+                assert(0);
+            case IMPORT_NAME_UNDECORATE:
+                if (expname[0] == '?' ||
+                    expname[0] == '@' ||
+                    expname[0] == '_')
+                    expname = expname[1..$];
+                foreach(i; 0..expname.length)
+                {
+                    if (expname[i] == '@')
+                    {
+                        expname.length = i;
+                        break;
+                    }
+                }
+                break;
+            default:
+                assert(0);
+            }
+
+            auto imp = new Import(modname, 0, expname);
+            imp.thunk = new ImportThunkSymbol(name, imp);
+            imp.address = new ImportAddressSymbol(cast(immutable(ubyte)[])"__imp_" ~ name, imp);
+            symtab.add(imp);
+            symtab.add(imp.thunk);
+            symtab.add(imp.address);
+
+            // auto s = new ImportThunkSymbol(modname, 0, name, expname);
+            // auto s2 = new ImportSymbol(modname, 0, cast(immutable(ubyte)[])"__imp_" ~ name, expname);
+            // symtab.add(s);
+            // symtab.add(s2);
+
+            symtab.checkUnresolved();
+            symtab.merge();
+            return;
+        }
+
         enforce(ch.Machine == IMAGE_FILE_MACHINE_I386);
         enforce(ch.SizeOfOptionalHeader == 0);
         enforce(ch.Characteristics == 0);
 
-        immutable(ubyte[]) getName(in ubyte[] n)
+        auto stringtab = ch.PointerToSymbolTable + StandardSymbolRecord.sizeof * ch.NumberOfSymbols;
+
+        immutable(ubyte)[] readStringTab(uint offset)
         {
-            if (n[0..4] == [0,0,0,0])
-            {
-                assert(0);
-            }
-            else
-                return n.idup;
+            auto pos = f.tell();
+            scope(exit) f.seek(pos);
+            f.seek(stringtab + offset);
+            return f.readZString();
         }
 
         foreach(i; 0..ch.NumberOfSections)
         {
             auto sh = f.read!SectionHeader();
-            assert(sh.Name[0] != '/');
-            auto name = sh.Name[].idup;
-            while (name[$-1] == 0)
-                name = name[0..$-1];
+            immutable(ubyte)[] name;
+            if (sh.Name[0] == '/')
+            {
+                auto n = (cast(string)sh.Name[1..$].trim).to!uint();
+                name = readStringTab(n);
+            }
+            else
+            {
+                name = sh.Name[].idup.trim;
+            }
+
             // writefln("%s: 0x%08X", cast(string)sh.Name, sh.Characteristics);
             auto secclass = getSectionClass(sh);
             auto secalign = getSectionAlign(sh);
             auto length = sh.VirtualSize;
             auto sec = new Section(name, secclass, secalign, length);
             sections ~= sec;
+            iscomdat ~= (sh.Characteristics & IMAGE_SCN_LNK_COMDAT) != 0;
 
             if (secclass == SectionClass.Directive)
             {
@@ -86,6 +152,8 @@ public:
                 {
                     while(s.length && s[0] == ' ')
                         s = s[1..$];
+                    if (!s.length)
+                        break;
                     assert(s[0] == '/');
                     size_t j = 1;
                     while (s.length && s[j] != ':')
@@ -108,10 +176,18 @@ public:
                     switch(arg)
                     {
                     case "/DEFAULTLIB":
+                    case "/defaultlib":
                         queue.append(defaultExtension(val, "lib"));
                         break;
+                    case "/MERGE":
+                    case "/merge":
+                        writeln("Warning: /MERGE ignored");
+                        break;
+                    case "/disallowlib":
+                        writeln("Warning: /DISALLOWLIB ignored");
+                        break;
                     default:
-                        assert(0, "Unknown linker directive: " ~ arg);
+                        assert(0, "Unknown linker directive: " ~ arg ~ ":" ~ val);
                     }
                 }
             }
@@ -122,7 +198,14 @@ public:
             f.seek(ch.PointerToSymbolTable + StandardSymbolRecord.sizeof * i);
 
             auto sym = f.read!StandardSymbolRecord();
-            auto name = getName(sym.Name[]);
+
+            immutable(ubyte)[] name;
+            if (sym.Name[0..4] == [0,0,0,0])
+            {
+                name = readStringTab((cast(uint[])sym.Name[4..8])[0]);
+            }
+            else
+                name = sym.Name.idup.trim;
 
             // writeln("Symbol at ", i, ": ", cast(string)name);
             // writeln(sym);
@@ -133,13 +216,35 @@ public:
                 assert(sym.NumberOfAuxSymbols == 0);
                 if (sym.SectionNumber == IMAGE_SYM_UNDEFINED)
                 {
-                    assert(sym.Value == 0);
-                    symtab.add(new ExternSymbol(name));
+                    if (sym.Value == 0)
+                    {
+                        symtab.add(new ExternSymbol(name));
+                    }
+                    else
+                    {
+                        symtab.add(new ComdefSymbol(name,  sym.Value));
+                    }
+                }
+                else if (sym.SectionNumber == IMAGE_SYM_ABSOLUTE)
+                {
+                    assert(sym.Type == 0);
+                    assert(sym.NumberOfAuxSymbols == 0);
+                    symtab.add(new AbsoluteSymbol(name, sym.Value));
+                    continue;
                 }
                 else
                 {
                     auto sec = sections[sym.SectionNumber-1];
-                    symtab.add(new PublicSymbol(sec, name, sym.Value));
+                    if (iscomdat[sym.SectionNumber-1])
+                    {
+                        // writeln("Comdat symbol ", cast(string)name);
+                        symtab.add(new ComdatSymbol(sec, name, sym.Value, Comdat.Any, false));
+                    }
+                    else
+                    {
+                        // writeln("Public symbol ", cast(string)name);
+                        symtab.add(new PublicSymbol(sec, name, sym.Value));
+                    }
                 }
                 break;
             case IMAGE_SYM_CLASS_STATIC:
@@ -158,20 +263,30 @@ public:
                         // absolute symbol
                         assert(sym.Type == 0);
                         assert(sym.NumberOfAuxSymbols == 0);
-                        symtab.add(new AbsoluteSymbol(name, sym.Value));
+                        auto s = new AbsoluteSymbol(name, sym.Value);
+                        s.isLocal = true;
+                        symtab.add(s);
                         continue;
                     }
                     else
                     {
-                        assert(0, cast(string)name);
+                        // writeln("Static symbol ", cast(string)name);
+                        auto sec = sections[sym.SectionNumber-1];
+                        auto s = new PublicSymbol(sec, name, sym.Value);
+                        s.isLocal = true;
+                        symtab.add(s);
                     }
                 }
                 break;
+            case IMAGE_SYM_CLASS_LABEL:
+                continue;
             default:
                 assert(0, to!string(sym.StorageClass));
             }
             enforce(sym.NumberOfAuxSymbols == 0, cast(string)name);
         }
+        symtab.checkUnresolved();
+        symtab.merge();
     }
     override void loadData(uint tlsBase)
     {
@@ -180,6 +295,7 @@ public:
 private:
     SectionClass getSectionClass(in ref SectionHeader sh)
     {
+        auto name = sh.Name.trim;
         if (sh.Characteristics & IMAGE_SCN_CNT_CODE)
         {
             return SectionClass.Code;
@@ -193,12 +309,17 @@ private:
             return SectionClass.BSS;
         }
         else if (sh.Characteristics & IMAGE_SCN_LNK_INFO &&
-                 sh.Name == cast(ubyte[])".drectve")
+                 name == cast(ubyte[])".drectve")
         {
             return SectionClass.Directive;
         }
+        else if (sh.Characteristics & IMAGE_SCN_LNK_INFO &&
+                 name == cast(ubyte[])".sxdata")
+        {
+            return SectionClass.Discard;
+        }
         else
-            assert(0, cast(string)sh.Name);
+            assert(0, cast(string)name);
     }
     SectionAlign getSectionAlign(in ref SectionHeader sh)
     {
@@ -218,8 +339,13 @@ private:
         {
             return SectionAlign.align_16;
         }
+        else if (sh.Characteristics & IMAGE_SCN_LNK_INFO)
+        {
+            // These don't get linked, so we don't care about alignment
+            return SectionAlign.align_1;
+        }
         else
-            assert(0);
+            assert(0, to!string(sh.Characteristics, 16));
     }
 }
 
@@ -229,4 +355,11 @@ void writeBytes(in ubyte[] data)
     foreach(v; data)
         writef("%.2X ", v);
     writeln("]");
+}
+
+inout(ubyte)[] trim(inout(ubyte)[] s)
+{
+    while(s.length && s[$-1] == 0)
+        s = s[0..$-1];
+    return s;
 }

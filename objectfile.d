@@ -3,6 +3,7 @@ import datafile;
 import modules;
 import omflibraryfile;
 import omfobjectfile;
+import cofflibraryfile;
 import coffobjectfile;
 import sectiontable;
 import symboltable;
@@ -26,6 +27,8 @@ abstract class ObjectFile : Module
             return new OmfLibraryFile(f);
         case 0x4C:
             return new CoffObjectFile(f);
+        case 0x21:
+            return new CoffLibraryFile(f);
         default:
             return null;
         }

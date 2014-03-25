@@ -112,7 +112,12 @@ public:
                         }
                         enforce(data.length == 0, "Corrupt IMPDEF record");
                         //writeln("IMPDEF int:", cast(string)intname, " mod:", cast(string)modname, " ent:", isOrdinal ? to!string(entryOrd) : cast(string)expname);
-                        symtab.add(new ImportSymbol(modname, entryOrd, intname, expname));
+                        auto imp = new Import(modname, entryOrd, expname);
+                        imp.thunk = new ImportThunkSymbol(intname, imp);
+                        imp.address = new ImportAddressSymbol(cast(immutable(ubyte)[])"__imp_" ~ intname, imp);
+                        symtab.add(imp);
+                        symtab.add(imp.thunk);
+                        symtab.add(imp.address);
                         break;
                     case 0x02: // EXPDEF
                         enforce(false, "COMENT EXPDEF not supported");

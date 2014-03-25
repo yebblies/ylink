@@ -23,6 +23,7 @@ align(1):
 }
 static assert(CoffHeader.sizeof == 20);
 
+enum ushort IMAGE_FILE_MACHINE_UNKNOWN = 0x0000;
 enum ushort IMAGE_FILE_MACHINE_I386 = 0x14C;
 
 enum ushort IMAGE_FILE_RELOCS_STRIPPED         = 0x0001;
@@ -299,4 +300,50 @@ enum : ubyte
     IMAGE_SYM_CLASS_SECTION = 104,
     IMAGE_SYM_CLASS_WEAK_EXTERNAL = 105,
     IMAGE_SYM_CLASS_CLR_TOKEN = 107,
+}
+
+auto CoffLibSignature = cast(immutable(ubyte)[])"!<arch>\n";
+
+struct CoffLibHeader
+{
+    char[16] Name;
+    char[12] Date;
+    char[6] UserID;
+    char[6] GroupID;
+    char[8] Mode;
+    char[10] Size;
+    char[2] End;
+}
+static assert(CoffLibHeader.sizeof == 60);
+
+enum CoffLibLinkerMemberSig = "/               ";
+enum CoffLibLongnamesMemberSig = "//              ";
+
+struct CoffImportHeader
+{
+align(1):
+    ushort Sig1;
+    ushort Sig2;
+    ushort Version;
+    ushort Machine;
+    uint TimeDateStamp;
+    uint SizeOfData;
+    ushort OrdinalHint;
+    ushort Type;
+}
+static assert(CoffImportHeader.sizeof == 20);
+
+enum : ubyte
+{
+    IMPORT_CODE = 0,
+    IMPORT_DATA = 1,
+    IMPORT_CONST = 2
+}
+
+enum : ubyte
+{
+    IMPORT_ORDINAL = 0,
+    IMPORT_NAME = 1,
+    IMPORT_NAME_NOPREFIX = 2,
+    IMPORT_NAME_UNDECORATE = 3
 }

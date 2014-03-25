@@ -24,8 +24,8 @@ void main(string[] args)
     pe.loadData();
     pe.dumpImports();
 
-    auto di = new DebugInfo();
-    pe.loadDebugInfo(di);
+    // auto di = new DebugInfo();
+    // pe.loadDebugInfo(di);
 
-    di.dump();
+    // di.dump();
 }

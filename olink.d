@@ -153,7 +153,9 @@ void main(string[] args)
     }
     symtab.defineImports(sectab);
     symtab.allocateComdef(sectab);
-    symtab.defineSpecial(sectab);
+    symtab.defineSpecial(sectab, imageBase);
+    if (!symtab.entryPoint.length)
+        symtab.entryPoint = cast(immutable(ubyte)[])"mainCRTStartup";
     symtab.checkUnresolved();
     auto segments = sectab.allocateSegments(imageBase, segAlign, fileAlign);
     symtab.buildImports(segments[SegmentType.Import].data, imageBase);

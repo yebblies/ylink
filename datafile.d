@@ -39,6 +39,12 @@ public:
         pos += 4;
         return getDwordLE(d);
     }
+    uint readDwordBE()
+    {
+        auto d = data[pos..pos+4];
+        pos += 4;
+        return getDwordBE(d);
+    }
     T read(T)()
     {
         auto d = data[pos..pos+T.sizeof];
@@ -110,6 +116,13 @@ ushort getWordBE(ref immutable(ubyte)[] d)
 uint getDwordLE(ref immutable(ubyte)[] d)
 {
     uint r = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+    d = d[4..$];
+    return r;
+}
+
+uint getDwordBE(ref immutable(ubyte)[] d)
+{
+    uint r = d[3] | (d[2] << 8) | (d[1] << 16) | (d[0] << 24);
     d = d[4..$];
     return r;
 }

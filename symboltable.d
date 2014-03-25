@@ -15,7 +15,7 @@ final class SymbolTable
     Symbol[immutable(ubyte)[]] symbols;
     Symbol[] undefined;
     immutable(ubyte)[] entryPoint;
-    ImportSymbol[][immutable(ubyte)[]] imports;
+    Import[][immutable(ubyte)[]] imports;
     Symbol[] hiddenSyms;
 
     this(SymbolTable parent)
@@ -57,10 +57,8 @@ final class SymbolTable
                 sym.refCount += p.refCount;
                 removeUndefined(*p);
                 *p = sym;
-                if (auto imp = cast(ImportSymbol)sym)
-                    imports[imp.modname] ~= imp;
             }
-            else if (cast(ImportSymbol)*p && cast(ImportSymbol)sym)
+            else if (cast(ImportThunkSymbol)*p && cast(ImportThunkSymbol)sym)
             {
                 enforce(false, "Redefinition of import " ~ cast(string)sym.name);
             }
@@ -104,10 +102,23 @@ final class SymbolTable
             symbols[sym.name] = sym;
             if (cast(ExternSymbol)sym)
                 undefined ~= sym;
-            if (auto imp = cast(ImportSymbol)sym)
-                imports[imp.modname] ~= imp;
             return sym;
         }
+    }
+    void add(Import imp)
+    {
+        if (imp.modname in imports)
+        {
+            auto imps = imports[imp.modname];
+            foreach(i; imps)
+            {
+                if (i.expName == imp.expName)
+                {
+                    enforce(false, "Multiple definitions of import " ~ cast(string)imp.expName);
+                }
+            }
+        }
+        imports[imp.modname] ~= imp;
     }
     bool hasUndefined()
     {
@@ -145,6 +156,13 @@ final class SymbolTable
             }
             else
                 parent.addHidden(sym);
+        }
+        foreach(lib, imps; imports)
+        {
+            foreach(i; imps)
+            {
+                parent.add(i);
+            }
         }
     }
     void addHidden(Symbol sym)
@@ -184,23 +202,26 @@ final class SymbolTable
             offset += (syms.length + 1) * importEntrySize;
         }
         // Hint-Name Table
-        foreach(lib, syms; imports)
+        foreach(lib, imps; imports)
         {
             offset += (1 + lib.length + 1) & ~1;
-            foreach(sym; syms)
-                if (sym.expName.length)
-                    offset += (3 + sym.expName.length + 1) & ~1;
+            foreach(imp; imps)
+                if (imp.expName.length)
+                    offset += (3 + imp.expName.length + 1) & ~1;
         }
-        foreach(lib, syms; imports)
+        foreach(lib, imps; imports)
         {
-            foreach(sym; syms)
+            foreach(imp; imps)
             {
-                auto s = new PublicSymbol(sec, cast(immutable(ubyte)[])"__imp_" ~ sym.name, offset);
-                //writefln("Import: %s at %.8X", cast(string)sym.name, offset);
+                //writefln("Import: %s at %.8X", cast(string)imp.expName, offset);
+                imp.address.sec = sec;
+                imp.address.offset = offset;
                 offset += importEntrySize;
-                this.add(s);
-                sym.sec = tsec;
-                sym.offset = toffset;
+                assert(imp.thunk);
+                imp.thunk.sec = tsec;
+                imp.thunk.offset = toffset;
+                // sym.sec = tsec;
+                // sym.offset = toffset;
                 toffset += 6;
             }
             offset += importEntrySize;
@@ -244,47 +265,48 @@ final class SymbolTable
         enum idataRVA = 0x1000;
         auto idataVA = base + idataRVA;
         uint totalImports;
-        foreach(lib, syms; imports)
+        foreach(lib, imps; imports)
         {
-            //writefln("lib %s - %d symbols", cast(string)lib, syms.length);
-            totalImports += syms.length + 1;
+            //writefln("lib %s - %d symbols", cast(string)lib, imps.length);
+            totalImports += imps.length + 1;
         }
         uint directoryOffset = 0;
         uint lookupOffset = (imports.length + 1) * 5 * 4;
         uint hintOffset = lookupOffset + (totalImports * 4);
         uint libHintOffset = hintOffset;
-        foreach(lib, syms; imports)
-            foreach(sym; syms)
-                if (sym.expName.length)
-                    libHintOffset += (3 + sym.expName.length + 1) & ~1;
+        foreach(lib, imps; imports)
+            foreach(imp; imps)
+                if (imp.expName.length)
+                    libHintOffset += (3 + imp.expName.length + 1) & ~1;
         uint addressOffset = libHintOffset;
-        foreach(lib, syms; imports)
+        foreach(lib, imps; imports)
             addressOffset += (1 + lib.length + 1) & ~1;
 
-        foreach(libname, syms; imports)
+        foreach(libname, imps; imports)
         {
             writeDwordLE(directoryOffset, lookupOffset + idataRVA);
             writeDwordLE(directoryOffset, 0);
             writeDwordLE(directoryOffset, 0);
             writeDwordLE(directoryOffset, libHintOffset + idataRVA);
             writeDwordLE(directoryOffset, addressOffset + idataRVA);
-            foreach(sym; syms)
+            foreach(imp; imps)
             {
                 //writefln("Import: %s at %.8X", cast(string)sym.name, addressOffset);
-                auto tsec = sym.sec;
+                assert(imp.thunk);
+                auto tsec = imp.thunk.sec;
                 auto tdata = tsec.data;
-                tdata[sym.offset..sym.offset+2] = [0xFF, 0x25];
-                (cast(uint[])tdata[sym.offset+2..sym.offset+6])[0] = addressOffset + idataVA;
-                if (sym.expName.length)
+                tdata[imp.thunk.offset..imp.thunk.offset+2] = [0xFF, 0x25];
+                (cast(uint[])tdata[imp.thunk.offset+2..imp.thunk.offset+6])[0] = addressOffset + idataVA;
+                if (imp.expName.length)
                 {
                     writeDwordLE(lookupOffset, hintOffset + idataRVA);
                     writeDwordLE(addressOffset, hintOffset + idataRVA);
-                    writeHint(hintOffset, sym.expName);
+                    writeHint(hintOffset, imp.expName);
                 }
                 else
                 {
-                    writeDwordLE(lookupOffset, 0x80000000 | sym.expOrd);
-                    writeDwordLE(addressOffset, 0x80000000 | sym.expOrd);
+                    writeDwordLE(lookupOffset, 0x80000000 | imp.expOrd);
+                    writeDwordLE(addressOffset, 0x80000000 | imp.expOrd);
                 }
             }
             lookupOffset += 4;
@@ -293,7 +315,7 @@ final class SymbolTable
             libHintOffset++;
         }
     }
-    void defineSpecial(SectionTable sectab)
+    void defineSpecial(SectionTable sectab, uint base)
     {
         auto textend = new Section(cast(immutable(ubyte)[])"__textend", SectionClass.Code, SectionAlign.align_1, 0);
         auto dataend = new Section(cast(immutable(ubyte)[])"__dataend", SectionClass.Data, SectionAlign.align_1, 0);
@@ -301,6 +323,7 @@ final class SymbolTable
         sectab.add(textend);
         sectab.add(dataend);
         sectab.add(bssend);
+        add(new AbsoluteSymbol(cast(immutable(ubyte)[])"___ImageBase", 0));
         add(new PublicSymbol(textend, cast(immutable(ubyte)[])"_etext", 0));
         add(new PublicSymbol(textend, cast(immutable(ubyte)[])"__etext", 0));
         add(new PublicSymbol(dataend, cast(immutable(ubyte)[])"_edata", 0));

@@ -20,6 +20,7 @@ enum SectionClass
     IData,
     EData,
     Directive,
+    Discard,
 }
 
 enum SectionAlign
