@@ -333,7 +333,7 @@ final class SymbolTable
         sectab.add(textend);
         sectab.add(dataend);
         sectab.add(bssend);
-        add(new AbsoluteSymbol(cast(immutable(ubyte)[])"___ImageBase", 0));
+        add(new AbsoluteSymbol(cast(immutable(ubyte)[])"___ImageBase", base));
         add(new PublicSymbol(textend, cast(immutable(ubyte)[])"_etext", 0));
         add(new PublicSymbol(textend, cast(immutable(ubyte)[])"__etext", 0));
         add(new PublicSymbol(dataend, cast(immutable(ubyte)[])"_edata", 0));
