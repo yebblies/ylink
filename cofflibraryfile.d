@@ -41,6 +41,7 @@ public:
         f.seek(0);
         enforce(f.readBytes(8) == CoffLibSignature, "Invalid COFF library signature");
 
+        size_t longnamesoffset;
         bool seenFirstLinkerMember;
         while (!f.empty())
         {
@@ -77,6 +78,7 @@ public:
             }
             else if (h.Name == CoffLibLongnamesMemberSig)
             {
+                longnamesoffset = f.tell();
                 f.seek(f.tell() + h.Size[].strip.to!uint());
             }
             else if (h.Name[0] == '/')
@@ -98,9 +100,30 @@ public:
                 // writeln("Searching ", cast(string)sym.name);
                 if (sym.name in symbols)
                 {
+                    f.seek(symbols[sym.name]);
+
+                    auto h = f.read!CoffLibHeader();
+                    immutable(ubyte)[] name;
+                    if (h.Name[0] == '/')
+                    {
+                        auto n = h.Name[1..$];
+                        while (n[$-1] == ' ')
+                            n = n[0..$-1];
+                        f.seek(longnamesoffset+to!uint(n));
+                        name = f.readZString();
+                    }
+                    else
+                    {
+                        name = cast(immutable(ubyte)[])h.Name.idup;
+                        size_t i = 1;
+                        while (name[i] != '/')
+                            i++;
+                        name = name[0..i];
+                    }
+
                     auto offset = symbols[sym.name] + CoffLibHeader.sizeof;
                     auto obj = new CoffObjectFile(new DataFile(f, offset));
-                    // writeln("Pulling in object ", to!string(offset,16), " due to undefined symbol: ", cast(string)sym.name);
+                    // writeln("Pulling in object ", cast(string)name, " due to undefined symbol: ", cast(string)sym.name);
                     obj.loadSymbols(symtab, sectab, queue, objects);
                     progress = true;
                     break;
@@ -113,12 +136,4 @@ public:
     {
         assert(0, "Libraries can't be loaded like this");
     }
-private:
-    // OmfRecord loadRecord()
-    // {
-        // OmfRecord r;
-        // r.type = OmfRecord.recordType(f.readByte());
-        // r.data = f.readBytes(f.readWordLE())[0..$-1];
-        // return r;
-    // }
 }
