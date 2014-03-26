@@ -29,6 +29,7 @@ private:
     immutable(ubyte)[][] sectionnames;
     Symbol[] symbols;
     bool[] iscomdat;
+    Comdat[] comdattype;
 
 public:
     this(DataFile f)
@@ -146,6 +147,7 @@ public:
             sections ~= sec;
             sectab.add(sec);
             iscomdat ~= (sh.Characteristics & IMAGE_SCN_LNK_COMDAT) != 0;
+            comdattype ~= Comdat.Unique;
 
             if (secclass == SectionClass.Directive)
             {
@@ -252,8 +254,29 @@ public:
                 }
                 else
                 {
+                    auto sec = sections[sym.SectionNumber-1];
                     if (sym.Value == 0)
                     {
+                        if (iscomdat[sym.SectionNumber-1] && sym.NumberOfAuxSymbols)
+                        {
+                            assert(sym.NumberOfAuxSymbols >= 1);
+                            auto aux = f.read!SectionSymbolRecord();
+                            switch(aux.Selection)
+                            {
+                            case IMAGE_COMDAT_SELECT_NODUPLICATES:
+                                comdattype[sym.SectionNumber-1] = Comdat.Unique;
+                                break;
+                            case IMAGE_COMDAT_SELECT_ANY:
+                                comdattype[sym.SectionNumber-1] = Comdat.Any;
+                                break;
+                            case IMAGE_COMDAT_SELECT_ASSOCIATIVE:
+                                comdattype[sym.SectionNumber-1] = Comdat.Any;
+                                break;
+                            default:
+                                writeln(aux.Selection);
+                                assert(0);
+                            }
+                        }
                         auto ss = symtab.searchName(name);
                         if (ss)
                         {
@@ -262,7 +285,6 @@ public:
                         }
                     }
                     // writeln("Static symbol ", cast(string)name);
-                    auto sec = sections[sym.SectionNumber-1];
                     auto s = new PublicSymbol(sec, name, sym.Value);
                     s.isLocal = true;
                     symbols[i] = symtab.add(s);
@@ -323,10 +345,11 @@ public:
                     auto r = f.read!CoffRelocation();
                     auto sym = symbols[r.SymbolTableIndex];
                     assert(sym);
-                    sym = sym.resolve();
-                    assert(!cast(ExternSymbol)sym);
-                    //writeln(sym);
-
+                    if (sym.isLocal)
+                        sym = symtab.searchName(sym.name);
+                    else
+                        sym = symtab.deepSearch(sym.name);
+                    assert(sym);
                     assert(ch.Machine == IMAGE_FILE_MACHINE_I386);
                     switch(r.Type)
                     {
@@ -356,7 +379,7 @@ public:
                         break;
                     case IMAGE_REL_I386_REL32:
                         auto targetAddress = sym.getAddress();
-                        auto baseAddress = sec.base + r.VirtualAddress;
+                        auto baseAddress = sec.base + r.VirtualAddress + 4;
                         auto offset = r.VirtualAddress;
                         (cast(uint[])sec.data[offset..offset+4])[0] += targetAddress - baseAddress;
                         break;

@@ -27,10 +27,6 @@ abstract class Symbol
     abstract void dump();
     abstract uint getAddress();
     abstract uint getSegment();
-    Symbol resolve()
-    {
-        return this;
-    }
 }
 
 final class PublicSymbol : Symbol
@@ -99,10 +95,6 @@ final class ExternSymbol : Symbol
     override uint getSegment()
     {
         assert(0);
-    }
-    override Symbol resolve()
-    {
-        return sym.resolve();
     }
 }
 

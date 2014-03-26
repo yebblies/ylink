@@ -266,6 +266,20 @@ align(1):
 }
 static assert(StandardSymbolRecord.sizeof == 18);
 
+align(1)
+struct SectionSymbolRecord
+{
+align(1):
+    uint Length;
+    ushort NumberOfRelocations;
+    ushort NumberOfLinenumbers;
+    uint CheckSum;
+    ushort Number;
+    ubyte Selection;
+    ubyte[3] Unused;
+}
+static assert(SectionSymbolRecord.sizeof == 18);
+
 enum : short
 {
     IMAGE_SYM_UNDEFINED = 0,
@@ -302,6 +316,16 @@ enum : ubyte
     IMAGE_SYM_CLASS_SECTION = 104,
     IMAGE_SYM_CLASS_WEAK_EXTERNAL = 105,
     IMAGE_SYM_CLASS_CLR_TOKEN = 107,
+}
+
+enum : ubyte
+{
+    IMAGE_COMDAT_SELECT_NODUPLICATES = 1,
+    IMAGE_COMDAT_SELECT_ANY = 2,
+    IMAGE_COMDAT_SELECT_SAME_SIZE = 3,
+    IMAGE_COMDAT_SELECT_EXACT_MATCH = 4,
+    IMAGE_COMDAT_SELECT_ASSOCIATIVE = 5,
+    IMAGE_COMDAT_SELECT_LARGEST = 6
 }
 
 auto CoffLibSignature = cast(immutable(ubyte)[])"!<arch>\n";
