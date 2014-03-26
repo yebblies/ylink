@@ -93,7 +93,7 @@ string X86Disassemble(ubyte *ptr)
     case 0x63: return "ARPL r/m16 r16";
     case 0x64: return "override FS " ~ X86Disassemble(ptr+1);
     case 0x65: return "override GS";
-    case 0x66: return "override 66";
+    case 0x66: return "override 66 " ~ X86Disassemble(ptr+1);
     case 0x67: return "override 67";
     case 0x68: return "PUSH imm16/32";
     case 0x69: return "IMUL r16/32 r/m16/32 imm16/32";
