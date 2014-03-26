@@ -122,7 +122,8 @@ public:
                     }
 
                     auto offset = symbols[sym.name] + CoffLibHeader.sizeof;
-                    auto obj = new CoffObjectFile(new DataFile(f, offset));
+                    auto obj = ObjectFile.detectFormat(new DataFile(f, offset));
+                    assert(obj);
                     // writeln("Pulling in object ", cast(string)name, " due to undefined symbol: ", cast(string)sym.name);
                     obj.loadSymbols(symtab, sectab, queue, objects);
                     progress = true;

@@ -10,6 +10,7 @@ import workqueue;
 import objectfile;
 import linker;
 import paths;
+import datafile;
 
 WorkQueue!ObjectFile loadObjects(string[] objFilenames, Paths paths, SymbolTable symtab, SectionTable sectab)
 {
@@ -25,7 +26,7 @@ WorkQueue!ObjectFile loadObjects(string[] objFilenames, Paths paths, SymbolTable
             writeln("Warning - File not found: " ~ filename);
         else
         {
-            auto object = ObjectFile.detectFormat(filename);
+            auto object = ObjectFile.detectFormat(new DataFile(filename));
             enforce(object, "Unknown object file format: " ~ filename);
             object.loadSymbols(symtab, sectab, queue, objects);
         }

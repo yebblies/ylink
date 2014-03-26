@@ -16,9 +16,8 @@ abstract class ObjectFile : Module
         super(name);
     }
 
-    static ObjectFile detectFormat(string filename)
+    static ObjectFile detectFormat(DataFile f)
     {
-        auto f = new DataFile(filename);
         switch(f.peekByte())
         {
         case 0x80:
@@ -27,6 +26,8 @@ abstract class ObjectFile : Module
             return new OmfLibraryFile(f);
         case 0x4C:
             return new CoffObjectFile(f);
+        case 0x00:
+            return new CoffImportFile(f);
         case 0x21:
             return new CoffLibraryFile(f);
         default:

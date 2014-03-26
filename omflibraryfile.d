@@ -90,7 +90,8 @@ public:
                 if (sym.name in symbols)
                 {
                     auto page = symbols[sym.name];
-                    auto obj = new OmfObjectFile(new DataFile(f, page * pagesize));
+                    auto obj = ObjectFile.detectFormat(new DataFile(f, page * pagesize));
+                    assert(obj);
                     //writeln("Pulling in object ", page, " due to undefined symbol: ", cast(string)sym.name);
                     obj.loadSymbols(symtab, sectab, queue, objects);
                     progress = true;

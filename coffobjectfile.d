@@ -51,62 +51,6 @@ public:
 
         auto ch = f.read!CoffHeader();
 
-        if (ch.Machine == IMAGE_FILE_MACHINE_UNKNOWN &&
-            ch.NumberOfSections == ushort.max)
-        {
-            // Import object
-            f.seek(f.tell() - CoffHeader.sizeof);
-            auto ih = f.read!CoffImportHeader();
-
-            enforce(ih.Version == 0);
-            enforce(ih.Machine == IMAGE_FILE_MACHINE_I386);
-            enforce((ih.Type & 0b11) == IMPORT_CODE);
-
-            auto name = f.readZString();
-            auto modname = f.readZString();
-
-            auto expname = name;
-            switch ((ih.Type & 0b11100) >> 2)
-            {
-            case IMPORT_NAME:
-                assert(0);
-            case IMPORT_NAME_NOPREFIX:
-                assert(0);
-            case IMPORT_NAME_UNDECORATE:
-                if (expname[0] == '?' ||
-                    expname[0] == '@' ||
-                    expname[0] == '_')
-                    expname = expname[1..$];
-                foreach(i; 0..expname.length)
-                {
-                    if (expname[i] == '@')
-                    {
-                        expname.length = i;
-                        break;
-                    }
-                }
-                break;
-            default:
-                assert(0);
-            }
-
-            auto imp = new Import(modname, 0, expname);
-            imp.thunk = new ImportThunkSymbol(name, imp);
-            imp.address = new ImportAddressSymbol(cast(immutable(ubyte)[])"__imp_" ~ name, imp);
-            symtab.add(imp);
-            symtab.add(imp.thunk);
-            symtab.add(imp.address);
-
-            // auto s = new ImportThunkSymbol(modname, 0, name, expname);
-            // auto s2 = new ImportSymbol(modname, 0, cast(immutable(ubyte)[])"__imp_" ~ name, expname);
-            // symtab.add(s);
-            // symtab.add(s2);
-
-            symtab.checkUnresolved();
-            symtab.merge();
-            return;
-        }
-
         enforce(ch.Machine == IMAGE_FILE_MACHINE_I386);
         enforce(ch.SizeOfOptionalHeader == 0);
         enforce(ch.Characteristics == 0);
@@ -309,13 +253,6 @@ public:
 
         auto ch = f.read!CoffHeader();
 
-        if (ch.Machine == IMAGE_FILE_MACHINE_UNKNOWN &&
-            ch.NumberOfSections == ushort.max)
-        {
-            // Import object
-            return;
-        }
-
         enforce(ch.Machine == IMAGE_FILE_MACHINE_I386);
         enforce(ch.SizeOfOptionalHeader == 0);
         enforce(ch.Characteristics == 0);
@@ -516,4 +453,84 @@ bool parseMSLinkerSwitch(ref string s, out string arg, out string val, bool unti
     while(s.length && s[0] == ' ')
         s = s[1..$];
     return true;
+}
+
+
+final class CoffImportFile : ObjectFile
+{
+private:
+    DataFile f;
+    SymbolTable symtab;
+
+public:
+    this(DataFile f)
+    {
+        super(f.filename);
+        this.f = f;
+    }
+    override void dump()
+    {
+        assert(0);
+    }
+    override void loadSymbols(SymbolTable xsymtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
+    {
+        debug(COFFDATA) writeln("COFF Import file: ", f.filename);
+
+        symtab = new SymbolTable(xsymtab);
+        objects.append(this);
+        f.seek(0);
+
+        auto ch = f.read!CoffHeader();
+
+        enforce(ch.Machine == IMAGE_FILE_MACHINE_UNKNOWN);
+        enforce(ch.NumberOfSections == ushort.max);
+
+        f.seek(f.tell() - CoffHeader.sizeof);
+        auto ih = f.read!CoffImportHeader();
+
+        enforce(ih.Version == 0);
+        enforce(ih.Machine == IMAGE_FILE_MACHINE_I386);
+        enforce((ih.Type & 0b11) == IMPORT_CODE);
+
+        auto name = f.readZString();
+        auto modname = f.readZString();
+
+        auto expname = name;
+        switch ((ih.Type & 0b11100) >> 2)
+        {
+        case IMPORT_NAME:
+            assert(0);
+        case IMPORT_NAME_NOPREFIX:
+            assert(0);
+        case IMPORT_NAME_UNDECORATE:
+            if (expname[0] == '?' ||
+                expname[0] == '@' ||
+                expname[0] == '_')
+                expname = expname[1..$];
+            foreach(i; 0..expname.length)
+            {
+                if (expname[i] == '@')
+                {
+                    expname.length = i;
+                    break;
+                }
+            }
+            break;
+        default:
+            assert(0);
+        }
+
+        auto imp = new Import(modname, 0, expname);
+        imp.thunk = new ImportThunkSymbol(name, imp);
+        imp.address = new ImportAddressSymbol(cast(immutable(ubyte)[])"__imp_" ~ name, imp);
+        symtab.add(imp);
+        symtab.add(imp.thunk);
+        symtab.add(imp.address);
+
+        symtab.checkUnresolved();
+        symtab.merge();
+    }
+    override void loadData(uint tlsBase)
+    {
+    }
 }
