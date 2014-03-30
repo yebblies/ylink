@@ -92,15 +92,20 @@ final class Section
 
     this(immutable(ubyte)[] name, SectionClass secclass, SectionAlign secalign, uint length)
     {
-        auto i = name.countUntil('$');
         this.fullname = name;
-        this.name = i == -1 ? name : name[0..i];
-        this.tag = i == -1 ? null : name[i..$];
+        splitTaggedName(name, this.name, this.tag);
         this.secclass = secclass;
         this.secalign = secalign;
         this.length = (length + secalign - 1) & ~(secalign - 1);
         //this.length = length;
     }
+}
+
+void splitTaggedName(immutable(ubyte)[] full, out immutable(ubyte)[] name, out immutable(ubyte)[] tag)
+{
+    auto i = full.countUntil('$');
+    name = i == -1 ? full : full[0..i];
+    tag = i == -1 ? null : full[i..$];
 }
 
 string cleanString(immutable(ubyte)[] s)

@@ -16,6 +16,7 @@ import segment;
 import symbol;
 import symboltable;
 import workqueue;
+import directive;
 
 public:
 
@@ -30,6 +31,7 @@ private:
     Symbol[] symbols;
     bool[] iscomdat;
     Comdat[] comdattype;
+    Directive[] directives;
 
 public:
     this(DataFile f)
@@ -41,12 +43,8 @@ public:
     {
         assert(0);
     }
-    override void loadSymbols(SymbolTable xsymtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
+    void loadStuffFromFile()
     {
-        debug(COFFDATA) writeln("COFF Object file: ", f.filename);
-
-        symtab = new SymbolTable(xsymtab);
-        objects.append(this);
         f.seek(0);
 
         auto ch = f.read!CoffHeader();
@@ -89,7 +87,6 @@ public:
             auto length = sh.SizeOfRawData;
             auto sec = new Section(name, secclass, secalign, length);
             sections ~= sec;
-            sectab.add(sec);
             iscomdat ~= (sh.Characteristics & IMAGE_SCN_LNK_COMDAT) != 0;
             comdattype ~= Comdat.Unique;
 
@@ -116,7 +113,7 @@ public:
                     switch(arg)
                     {
                     case "/DEFAULTLIB":
-                        queue.append(defaultExtension(val, "lib"));
+                        directives ~= new LibDirective(cast(immutable(ubyte)[])val);
                         break;
                     case "/MERGE":
                         writeln("Warning: /MERGE ignored");
@@ -157,17 +154,17 @@ public:
                 {
                     if (sym.Value == 0)
                     {
-                        symbols[i] = symtab.add(new ExternSymbol(name));
+                        symbols[i] = new ExternSymbol(name);
                     }
                     else
                     {
-                        symbols[i] = symtab.add(new ComdefSymbol(name,  sym.Value));
+                        symbols[i] = new ComdefSymbol(name,  sym.Value);
                     }
                 }
                 else if (sym.SectionNumber == IMAGE_SYM_ABSOLUTE)
                 {
                     assert(sym.Type == 0);
-                    symbols[i] = symtab.add(new AbsoluteSymbol(name, sym.Value));
+                    symbols[i] = new AbsoluteSymbol(name, sym.Value);
                     continue;
                 }
                 else
@@ -176,12 +173,12 @@ public:
                     if (iscomdat[sym.SectionNumber-1])
                     {
                         // writeln("Comdat symbol ", cast(string)name);
-                        symbols[i] = symtab.add(new ComdatSymbol(sec, name, sym.Value, Comdat.Any, false));
+                        symbols[i] = new ComdatSymbol(sec, name, sym.Value, Comdat.Any, false);
                     }
                     else
                     {
                         // writeln("Public symbol ", cast(string)name);
-                        symbols[i] = symtab.add(new PublicSymbol(sec, name, sym.Value));
+                        symbols[i] = new PublicSymbol(sec, name, sym.Value);
                     }
                 }
                 break;
@@ -193,7 +190,7 @@ public:
                     assert(sym.NumberOfAuxSymbols == 0);
                     auto s = new AbsoluteSymbol(name, sym.Value);
                     s.isLocal = true;
-                    symbols[i] = symtab.add(s);
+                    symbols[i] = s;
                     continue;
                 }
                 else
@@ -221,29 +218,48 @@ public:
                                 assert(0);
                             }
                         }
-                        auto ss = symtab.searchName(name);
-                        if (ss)
+                        if (name == sec.fullname)
                         {
-                            symbols[i] = ss;
                             break;
                         }
                     }
                     // writeln("Static symbol ", cast(string)name);
                     auto s = new PublicSymbol(sec, name, sym.Value);
                     s.isLocal = true;
-                    symbols[i] = symtab.add(s);
+                    symbols[i] = s;
                 }
                 break;
             case IMAGE_SYM_CLASS_LABEL:
+                // writeln("label: ", cast(string)name);
                 auto sec = sections[sym.SectionNumber-1];
                 auto s = new AbsoluteSymbol(cast(immutable(ubyte)[])to!string(cast(void*)sec) ~ '$' ~ name, 0);
-                symbols[i] = symtab.add(s);
+                symbols[i] = s;
                 continue;
             default:
                 assert(0, to!string(sym.StorageClass));
             }
             i += sym.NumberOfAuxSymbols;
         }
+    }
+    override void loadSymbols(SymbolTable xsymtab, SectionTable sectab, WorkQueue!string queue, WorkQueue!ObjectFile objects)
+    {
+        debug(COFFDATA) writeln("COFF Object file: ", f.filename);
+
+        symtab = new SymbolTable(xsymtab);
+        objects.append(this);
+
+        loadStuffFromFile();
+
+        foreach(sec; sections)
+            sectab.add(sec);
+
+        foreach(sym; symbols)
+            if (sym)
+                symtab.add(sym);
+
+        foreach(d; directives)
+            d.apply(queue);
+
         symtab.checkUnresolved();
         symtab.merge();
     }

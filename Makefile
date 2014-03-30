@@ -1,5 +1,5 @@
 
-LINKSRC=coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d coffobjectfile.d cofflibraryfile.d driver.d
+LINKSRC=coffdef.d datafile.d linker.d modules.d objectfile.d omfdef.d omflibraryfile.d omfobjectfile.d paths.d pe.d relocation.d section.d sectiontable.d segment.d symbol.d symboltable.d workqueue.d coffobjectfile.d cofflibraryfile.d driver.d directive.d
 
 YLINK=ylink.exe
 YLINKSRC=ylink.d $(LINKSRC)
