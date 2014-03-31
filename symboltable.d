@@ -236,10 +236,12 @@ final class SymbolTable
             }
             offset += importEntrySize;
         }
-        sec.length = offset;
+        sec.exactlength = offset;
+        sec.alignedlength = offset.alignTo(sec.secalign);
         //writeln("Defined import segment: ", offset, " bytes");
         sectab.add(sec);
-        tsec.length = toffset;
+        tsec.exactlength = toffset;
+        tsec.alignedlength = toffset.alignTo(tsec.secalign);
         sectab.add(tsec);
     }
     void buildImports(ubyte[] data, uint base)

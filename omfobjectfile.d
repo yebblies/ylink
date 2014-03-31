@@ -316,9 +316,10 @@ public:
                     auto p = csec.container;
                     //enforce(offset == p.length, "Overlapping or gapped comdats are not supported");
                     enforce(p.members.length == 1);
-                    enforce(p.length == csec.length);
-                    csec.length = max(offset + data.length, csec.length);
-                    p.length = csec.length;
+                    // enforce(p.length == csec.length);
+                    csec.exactlength = offset + data.length;
+                    csec.alignedlength = csec.exactlength.alignTo(csec.secalign);
+                    p.length = csec.alignedlength.alignTo(p.secalign);
                 }
                 else
                 {
@@ -733,7 +734,7 @@ private:
         if (!data.length)
             return;
         assert(sec);
-        if (!sec.length)
+        if (!sec.alignedlength)
             return;
         if (sec.secclass == SectionClass.BSS)
             return;
@@ -758,7 +759,7 @@ private:
                         //writeln(cast(string)sec.fullname);
                         //writeln(offset, " + ", repdata.length, " <= ", sec.length);
                         //writeln(sec.data.length);
-                        enforce(offset + repdata.length <= sec.length, "Data is too big for section");
+                        enforce(offset + repdata.length <= sec.exactlength, "Data is too big for section");
                         sec.data[offset..offset + repdata.length] = repdata;
                         offset += repdata.length;
                     }
@@ -776,7 +777,7 @@ private:
             //writeln(cast(string)sec.fullname);
             //writeln(offset, ' ', data.length, ' ', sec.length);
             //writeBytes(data);
-            enforce(offset + data.length <= sec.length, "Data is too big for section");
+            enforce(offset + data.length <= sec.exactlength, "Data is too big for section");
             sec.data[offset..offset + data.length] = data[];
         }
     }
