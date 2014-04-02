@@ -232,7 +232,8 @@ public:
             case IMAGE_SYM_CLASS_LABEL:
                 // writeln("label: ", cast(string)name);
                 auto sec = sections[sym.SectionNumber-1];
-                auto s = new AbsoluteSymbol(cast(immutable(ubyte)[])to!string(cast(void*)sec) ~ '$' ~ name, 0);
+                // Used for SEH as handler labels
+                auto s = new PublicSymbol(sec, cast(immutable(ubyte)[])to!string(cast(void*)sec) ~ '$' ~ name, sym.Value);
                 symbols[i] = s;
                 continue;
             default:
@@ -283,11 +284,7 @@ public:
             //writeln(cast(string)this.name, " ", cast(string)name);
             if (sh.SizeOfRawData && sec.data.length)
             {
-                if (sec.data.length != sh.SizeOfRawData)
-                {
-                    writeln("Warning: comdat length mismatch");
-                    continue;
-                }
+                enforce(sec.exactlength == sh.SizeOfRawData);
                 f.seek(sh.PointerToRawData);
                 auto data = f.readBytes(sh.SizeOfRawData);
                 sec.data[] = data[];

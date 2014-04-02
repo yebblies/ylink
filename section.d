@@ -52,9 +52,9 @@ final class CombinedSection
     void append(Section sec)
     {
         secalign = max(secalign, sec.secalign);
-        length = (length + sec.secalign - 1) & ~cast(uint)(sec.secalign - 1);
+        length = length.alignTo(sec.secalign);
         sec.base = length;
-        length += sec.length;
+        length += sec.alignedlength;
         members ~= sec;
         sec.container = this;
     }
@@ -73,7 +73,7 @@ final class CombinedSection
         foreach(sec; members)
         {
             auto rbase = sec.base-base;
-            sec.data = data[rbase..rbase+sec.length];
+            sec.data = data[rbase..rbase+sec.exactlength];
         }
     }
 }
@@ -86,7 +86,8 @@ final class Section
     SectionClass secclass;
     SectionAlign secalign;
     uint base;
-    uint length;
+    uint alignedlength;
+    uint exactlength;
     CombinedSection container;
     ubyte[] data;
 
@@ -96,9 +97,14 @@ final class Section
         splitTaggedName(name, this.name, this.tag);
         this.secclass = secclass;
         this.secalign = secalign;
-        this.length = (length + secalign - 1) & ~(secalign - 1);
-        //this.length = length;
+        this.alignedlength = length.alignTo(secalign);
+        this.exactlength = length;
     }
+}
+
+uint alignTo(uint length, SectionAlign secalign)
+{
+    return (length + secalign - 1) & ~(secalign - 1);
 }
 
 void splitTaggedName(immutable(ubyte)[] full, out immutable(ubyte)[] name, out immutable(ubyte)[] tag)
