@@ -234,6 +234,7 @@ public:
                 auto sec = sections[sym.SectionNumber-1];
                 // Used for SEH as handler labels
                 auto s = new PublicSymbol(sec, cast(immutable(ubyte)[])to!string(cast(void*)sec) ~ '$' ~ name, sym.Value);
+                s.isLocal = true;
                 symbols[i] = s;
                 continue;
             default:
