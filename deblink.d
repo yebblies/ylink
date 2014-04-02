@@ -121,7 +121,7 @@ void main(string[] args)
                     auto code = de.Exception.ExceptionRecord.ExceptionCode;
                     ubyte[16] inst;
                     ReadProcessMemory(phandle, addr, inst.ptr, 16, null);
-                    of.writefln("%.8X %(%.2X%) %s %.8X", addr, inst[], "__Unknown_Exception__", cast(uint)code);
+                    of.writefln("%.8X %(%.2X%) %s %.8X", cast(uint)addr, inst[], "__Unknown_Exception__", cast(uint)code);
                     break;
                 }
                 break;
