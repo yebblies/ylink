@@ -38,6 +38,8 @@ DEBUGFLAGS=
 
 default: test
 
+tools: $(YLINK) $(OLINK) $(MLINK) $(DEBLINK) $(DEBDUMP) $(MAP2SYM)
+
 $(YLINK): $(YLINKSRC)
 	dmd -g -of$(YLINK) $(YLINKSRC) $(DEBUGFLAGS)
 

@@ -23,42 +23,49 @@
             "name": "ylink",
             "targetName": "ylink",
             "sourceFiles": [ "ylink.d" ],
-            "excludedSourceFiles": [ "olink.d", "deblink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
+            "excludedSourceFiles": [ "mlink.d", "olink.d", "deblink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
             "targetType": "executable"
         },
         {
             "name": "olink",
             "targetName": "olink",
             "sourceFiles": [ "olink.d" ],
-            "excludedSourceFiles": [ "ylink.d", "deblink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
+            "excludedSourceFiles": [ "ylink.d", "mlink.d", "deblink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
+            "targetType": "executable"
+        },
+        {
+            "name": "mlink",
+            "targetName": "mlink",
+            "sourceFiles": [ "mlink.d" ],
+            "excludedSourceFiles": [ "ylink.d", "olink.d", "deblink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
             "targetType": "executable"
         },
         {
             "name": "deblink",
             "targetName": "deblink",
             "sourceFiles": [ "deblink.d", "psapi.lib" ],
-            "excludedSourceFiles": [ "ylink.d", "olink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
+            "excludedSourceFiles": [ "ylink.d", "mlink.d", "olink.d", "debdump.d", "map2sym.d", "pedump.d", "test*" ],
             "targetType": "executable"
         },
         {
             "name": "debdump",
             "targetName": "debdump",
             "sourceFiles": [ "debdump.d" ],
-            "excludedSourceFiles": [ "ylink.d", "olink.d", "deblink.d", "map2sym.d", "pedump.d", "test*" ],
+            "excludedSourceFiles": [ "ylink.d", "mlink.d", "olink.d", "deblink.d", "map2sym.d", "pedump.d", "test*" ],
             "targetType": "executable"
         },
         {
             "name": "map2sym",
             "targetName": "map2sym",
             "sourceFiles": [ "map2sym.d" ],
-            "excludedSourceFiles": [ "ylink.d", "olink.d", "deblink.d", "debdump.d", "pedump.d", "test*" ],
+            "excludedSourceFiles": [ "ylink.d", "mlink.d", "olink.d", "deblink.d", "debdump.d", "pedump.d", "test*" ],
             "targetType": "executable"
         },
         {
             "name": "pedump",
             "targetName": "pedump",
             "sourceFiles": [ "pedump.d" ],
-            "excludedSourceFiles": [ "ylink.d", "olink.d", "deblink.d", "debdump.d", "map2sym.d", "test*" ],
+            "excludedSourceFiles": [ "ylink.d", "mlink.d", "olink.d", "deblink.d", "debdump.d", "map2sym.d", "test*" ],
             "targetType": "executable"
         }
     ]
