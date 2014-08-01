@@ -5,6 +5,8 @@ import std.process;
 import std.range;
 import std.stdio;
 
+import linker;
+
 class Paths
 {
     string[] paths;
@@ -16,6 +18,8 @@ class Paths
             path[$-1] == '"')
             path = path[1..$-1];
         paths ~= path;
+        if (verbosity)
+            writefln("verbose: Include Path \"%s\"", path);
     }
     void addLINK()
     {
